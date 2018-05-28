@@ -7,6 +7,7 @@ from mongoOperator.MongoOperator import MongoOperator
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     logging.info("Staring Mongo Operator...")
     operator = MongoOperator()
     operator.run()
