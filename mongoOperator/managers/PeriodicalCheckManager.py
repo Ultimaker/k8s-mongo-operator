@@ -1,10 +1,6 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-import logging
-
-from kubernetes import client
-
 from mongoOperator.managers.Manager import Manager
 from mongoOperator.services.KubernetesService import KubernetesService
 
