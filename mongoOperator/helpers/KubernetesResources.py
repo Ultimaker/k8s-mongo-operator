@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Chris ter Beke
+# Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import uuid
