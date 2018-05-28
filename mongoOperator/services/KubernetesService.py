@@ -2,7 +2,6 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
-import os
 from typing import Dict, Optional
 
 import yaml
