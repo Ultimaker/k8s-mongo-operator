@@ -78,6 +78,7 @@ class KubernetesResources:
         # Fixed values (for now).
         mongo_image = "mongo:3.6.4"
         mongo_name = "mongodb"
+        mongo_port = 27017
         mongo_command = ["mongod", "--replSet", name, "--bind_ip", "0.0.0.0", "--smallfiles", "--noprealloc"]
         storage_name = "mongo-storage"
         storage_size = "30Gi"
@@ -105,7 +106,7 @@ class KubernetesResources:
         # Create Mongo container.
         container_port = client.V1ContainerPort(
             name=mongo_name,
-            container_port=27017,
+            container_port=mongo_port,
             protocol="TCP"
         )
         
