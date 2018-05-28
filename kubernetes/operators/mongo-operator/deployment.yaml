@@ -4,7 +4,6 @@ metadata:
   labels:
     app: mongo-operator
   name: mongo-operator
-  namespace: ultimaker
 spec:
   replicas: 1
   revisionHistoryLimit: 2
@@ -21,6 +20,6 @@ spec:
         app: mongo-operator
     spec:
       containers:
-        image: ultimaker/mongo-operator:latest
-        imagePullPolicy: IfNotPresent
+      - image: ultimaker/mongo-operator:local
+        imagePullPolicy: Never
         name: mongo-operator

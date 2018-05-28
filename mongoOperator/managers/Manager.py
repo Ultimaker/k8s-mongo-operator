@@ -12,6 +12,7 @@ class Manager:
     """
     
     def __init__(self, shutting_down_event: "threading.Event", sleep_seconds: int) -> None:
+        logging.info("Starting manager {}".format(__name__))
         self._shutting_down_event = shutting_down_event
         self._sleep_seconds = sleep_seconds
     

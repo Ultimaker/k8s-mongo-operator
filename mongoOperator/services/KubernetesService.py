@@ -2,10 +2,12 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
+import os
 from typing import Dict, Optional
 
 import yaml
 from kubernetes import client
+from kubernetes.client import Configuration
 from kubernetes.client.rest import ApiException
 
 from mongoOperator.Settings import Settings
@@ -19,14 +21,19 @@ class KubernetesService:
     
     # Easy definable secret formats.
     OPERATOR_ADMIN_SECRET_FORMAT = "{}-admin-credentials"
-    MONITORING_SECRET_FORMAT = "{}-monitoring-credentials"
-    CERTIFICATE_AUTHORITY_SECRET_FORMAT = "{}-ca"
-    CLIENT_CERTIFICATE_SECRET_FORMAT = "{}-client-certificate"
     
-    # Re-usable API client instances.
-    custom_objects_api = client.CustomObjectsApi()
-    core_api = client.CoreV1Api()
-    extensions_api = client.ApiextensionsV1beta1Api()
+    def __init__(self):
+        # Create Kubernetes config.
+        kubernetes_config = Configuration()
+        kubernetes_config.host = Settings.KUBERNETES_SERVICE_HOST
+        kubernetes_config.verify_ssl = not Settings.KUBERNETES_SERVICE_SKIP_TLS
+        kubernetes_config.debug = Settings.KUBERNETES_SERVICE_DEBUG
+        api_client = client.ApiClient(configuration=kubernetes_config)
+        
+        # Re-usable API client instances.
+        self.custom_objects_api = client.CustomObjectsApi(api_client)
+        self.core_api = client.CoreV1Api(api_client)
+        self.extensions_api = client.ApiextensionsV1beta1Api(api_client)
 
     def createMongoObjectDefinition(self) -> None:
         """Create the custom resource definition."""
