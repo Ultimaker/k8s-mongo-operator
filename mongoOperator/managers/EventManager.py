@@ -61,10 +61,7 @@ class EventManager(Manager):
         """
         Handler method for adding a new managed Mongo replica set.
         """
-        self.kubernetes_service.createCertificateAuthoritySecret(cluster_object)
-        self.kubernetes_service.createClientCertificateSecret(cluster_object)
         self.kubernetes_service.createOperatorAdminSecret(cluster_object)
-        self.kubernetes_service.createMonitoringSecret(cluster_object)
         self.kubernetes_service.createService(cluster_object)
         self.kubernetes_service.createStatefulSet(cluster_object)
     
@@ -80,7 +77,4 @@ class EventManager(Manager):
         """
         self.kubernetes_service.deleteService(cluster_object)
         self.kubernetes_service.deleteStatefulSet(cluster_object)
-        self.kubernetes_service.deleteCertificateAuthoritySecret(cluster_object)
-        self.kubernetes_service.deleteClientCertificateSecret(cluster_object)
         self.kubernetes_service.deleteOperatorAdminSecret(cluster_object)
-        self.kubernetes_service.deleteMonitoringSecret(cluster_object)

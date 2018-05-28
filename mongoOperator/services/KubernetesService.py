@@ -63,30 +63,6 @@ class KubernetesService:
         return self.deleteSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
                                  cluster_object.metadata.namespace)
     
-    def createMonitoringSecret(self, cluster_object) -> None:
-        pass
-    
-    def deleteMonitoringSecret(self, cluster_object) -> bool:
-        pass
-    
-    def getCertificateAuthority(self, cluster_object) -> None:
-        pass
-    
-    def createCertificateAuthoritySecret(self, cluster_object) -> None:
-        pass
-    
-    def deleteCertificateAuthoritySecret(self, cluster_object) -> bool:
-        pass
-    
-    def getClientCertificate(self, cluster_object) -> None:
-        pass
-    
-    def createClientCertificateSecret(self, cluster_object) -> None:
-        pass
-    
-    def deleteClientCertificateSecret(self, cluster_object) -> bool:
-        pass
-    
     def getSecret(self, secret_name: str, namespace: str) -> None:
         pass
     
