@@ -1,0 +1,14 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: mongo.operators.ultimaker.com
+spec:
+  group: operators.ultimaker.com
+  version: v1
+  scope: Namespaced
+  names:
+    plural: mongos
+    singular: mongo
+    kind: Mongo
+    shortNames:
+     - mng
