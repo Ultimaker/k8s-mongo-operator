@@ -69,7 +69,6 @@ class EventManager(Manager):
         """
         Handler method for updating a managed Mongo replica set.
         """
-        self.kubernetes_service.updateOperatorAdminSecret(cluster_object)
         self.kubernetes_service.updateService(cluster_object)
         self.kubernetes_service.updateStatefulSet(cluster_object)
     

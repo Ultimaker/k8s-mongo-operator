@@ -15,7 +15,7 @@ class KubernetesResources:
     def createRandomPassword() -> str:
         """Generate a random secure password to use in secrets."""
         return uuid.uuid4().hex
-    
+
     @classmethod
     def createSecret(cls, secret_name: str, namespace: str, secret_data: Dict[str, str]) -> "client.V1Secret":
         secret = client.V1Secret()
@@ -160,28 +160,3 @@ class KubernetesResources:
 
         stateful_set.spec.volumeClaimTemplates = [persistent_volume]
         return stateful_set
-
-    @classmethod
-    def updateService(cls, cluster_object) -> client.V1Service:
-        """
-        Updates the given cluster.
-        :param cluster_object: The cluster object from the YAML file.
-        :return: The updated service.
-        """
-        name = cluster_object['metadata']['name']
-        namespace = cluster_object['metadata']['namespace']
-        v1 = client.CoreV1Api()
-        body = cls.createService(cluster_object)
-        return v1.patch_namespaced_service(name, namespace, body)
-
-    @classmethod
-    def deleteService(cls, name, namespace) -> client.V1Status:
-        """
-        Deletes the service with the given name.
-        :param name: The name of the service.
-        :param namespace: The namespace of the service.
-        :return: The deletion status.
-        """
-        v1 = client.CoreV1Api()
-        body = client.V1DeleteOptions()
-        return v1.delete_namespaced_service(name, namespace, body)
