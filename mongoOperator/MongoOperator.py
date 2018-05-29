@@ -1,12 +1,9 @@
-# Copyright (c) 2018 Chris ter Beke
+# Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
 import threading
 from time import sleep
-
-from kubernetes import config
-from kubernetes.client import Configuration
 
 from mongoOperator.managers.EventManager import EventManager
 from mongoOperator.managers.PeriodicalCheckManager import PeriodicalCheckManager
@@ -34,9 +31,6 @@ class MongoOperator:
             target = self._startEventListener,
             args = (self._shutting_down, 10)
         ))
-        
-        # Load the Kubernetes cluster configuration.
-        self._loadKubernetesConfig()
 
     def run(self):
         try:
@@ -51,17 +45,6 @@ class MongoOperator:
             self._shutting_down.set()
             for thread in self._manager_threads:
                 thread.join()
-
-    @staticmethod
-    def _loadKubernetesConfig() -> None:
-        try:
-            config.load_incluster_config()
-            kubernetes_config = Configuration()
-            kubernetes_config.assert_hostname = False
-            Configuration.set_default(kubernetes_config)
-        except config.ConfigException as exception:
-            logging.error("Unable to configure Kubernetes cluster access: {}".format(exception))
-            exit(1)
     
     @staticmethod
     def _startPeriodicalCheck(shutting_down_event: "threading.Event", sleep_seconds: int) -> None:

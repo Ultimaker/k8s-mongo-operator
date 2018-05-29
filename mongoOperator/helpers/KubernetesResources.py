@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Chris ter Beke
+# Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import uuid
@@ -15,7 +15,7 @@ class KubernetesResources:
     def createRandomPassword() -> str:
         """Generate a random secure password to use in secrets."""
         return uuid.uuid4().hex
-    
+
     @classmethod
     def createSecret(cls, secret_name: str, namespace: str, secret_data: Dict[str, str]) -> "client.V1Secret":
         secret = client.V1Secret()
@@ -36,11 +36,11 @@ class KubernetesResources:
         }
 
     @classmethod
-    def createService(cls, cluster_object) -> "client.V1Service":
+    def createService(cls, cluster_object: "client.V1beta1CustomResourceDefinition") -> "client.V1Service":
         
         # Parse cluster data object.
-        name = cluster_object['metadata']['name']
-        namespace = cluster_object['metadata']['namespace']
+        name = cluster_object.metadata['name']
+        namespace = cluster_object.metadata['namespace']
         
         # Create service.
         service = client.V1Service()
@@ -66,14 +66,23 @@ class KubernetesResources:
         return service
 
     @classmethod
-    def createStatefulSet(cls, cluster_object) -> "client.V1beta1StatefulSet":
+    def createStatefulSet(cls, cluster_object: "client.V1beta1CustomResourceDefinition") -> "client.V1beta1StatefulSet":
         
         # Parse cluster data object.
-        name = cluster_object['metadata']['name']
-        namespace = cluster_object['metadata']['namespace']
-        replicas = cluster_object['spec']['mongodb']['replicas']
-        cpu_limit = cluster_object['spec']['mongodb']['cpu_limit']
-        memory_limit = cluster_object['spec']['mongodb']['memory_limit']
+        name = cluster_object.metadata['name']
+        namespace = cluster_object.metadata['namespace']
+        replicas = cluster_object.spec['mongodb']['replicas']
+        cpu_limit = cluster_object.spec['mongodb']['cpu_limit']
+        memory_limit = cluster_object.spec['mongodb']['memory_limit']
+
+        # Fixed values (for now).
+        mongo_image = "mongo:3.6.4"
+        mongo_name = "mongodb"
+        mongo_port = 27017
+        mongo_command = ["mongod", "--replSet", name, "--bind_ip", "0.0.0.0", "--smallfiles", "--noprealloc"]
+        storage_name = "mongo-storage"
+        storage_size = "30Gi"
+        storage_mount_path = "/data/db"
         
         # Create stateful set.
         stateful_set = client.V1beta1StatefulSet()
@@ -96,26 +105,24 @@ class KubernetesResources:
         
         # Create Mongo container.
         container_port = client.V1ContainerPort(
-            name="mongodb",
-            container_port=27017,
+            name=mongo_name,
+            container_port=mongo_port,
             protocol="TCP"
         )
-        
+
         data_volume_mount = client.V1VolumeMount(
-            name="mongodb-data",
+            name=storage_name,
             read_only=False,
-            mount_path="/data/db"
+            mount_path=storage_mount_path
         )
-        
+
         resource_requirements = client.V1ResourceRequirements(
             limits={"cpu": cpu_limit, "memory": memory_limit},
             requests={"cpu": cpu_limit, "memory": memory_limit}
         )
 
-        command = ["mongod", "--replSet", name, "--bind_ip", "0.0.0.0", "--smallfiles", "--noprealloc"]
-
         mongo_container = client.V1Container(
-            name="mongod",
+            name=mongo_name,
             env=[
                 client.V1EnvVar(
                     name="POD_IP",
@@ -127,8 +134,8 @@ class KubernetesResources:
                     )
                 )
             ],
-            command=command,
-            image="mongo:3.6.4",
+            command=mongo_command,
+            image=mongo_image,
             ports=container_port,
             volume_mounts=[
                 data_volume_mount
@@ -136,14 +143,20 @@ class KubernetesResources:
             resources=resource_requirements
         )
 
-        stateful_set.spec.template.spec.containers = [mongo_container]
+        stateful_set.spec.template.spec = client.V1PodSpec(containers=[mongo_container])
 
-        # TODO: make persistent volume claim.
-        data_volume = client.V1Volume(
-            name="mongo-data",
-            empty_dir=client.V1EmptyDirVolumeSource()
+        # Create persistent volume claim.
+        persistent_volume = client.V1PersistentVolumeClaim(
+            metadata=client.V1ObjectMeta(
+                name=storage_name
+            ),
+            spec=client.V1PersistentVolumeClaimSpec(
+                access_modes=["ReadWriteOnce"],
+                resources=client.V1ResourceRequirements(
+                    requests={"storage": storage_size}
+                )
+            )
         )
 
-        stateful_set.spec.template.spec.volumes = [data_volume]
-
+        stateful_set.spec.volumeClaimTemplates = [persistent_volume]
         return stateful_set

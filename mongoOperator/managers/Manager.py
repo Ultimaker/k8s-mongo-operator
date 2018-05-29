@@ -1,4 +1,4 @@
-# Copyright (c) 2018 Chris ter Beke
+# Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
@@ -21,7 +21,7 @@ class Manager:
         """
         while not self._shutting_down_event.isSet():
             try:
-                logging.debug("Executing manager...")
+                logging.debug("Executing manager {}...".format(self.__class__.__name__))
                 self._execute()
             except Exception as exception:
                 logging.error("An exception occurred in a manager: {}".format(exception))
