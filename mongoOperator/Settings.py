@@ -15,8 +15,8 @@ class Settings:
     CUSTOM_OBJECT_RESOURCE_NAME = "mongo"
     
     # Kubernetes config.
-    KUBERNETES_SERVICE_ADDRESS = "{}:{}".format(os.getenv("KUBERNETES_SERVICE_HOST", "http://localhost"),
-                                                os.getenv("KUBERNETES_SERVICE_PORT", 8001))
+    KUBERNETES_SERVICE_HOST = os.getenv("KUBERNETES_SERVICE_HOST", "http://localhost")
+    KUBERNETES_SERVICE_PORT = os.getenv("KUBERNETES_SERVICE_PORT", 8001)
     KUBERNETES_SERVICE_SKIP_TLS = os.getenv("KUBERNETES_SERVICE_SKIP_TLS", "True") in STRING_TO_BOOL_DICT
     KUBERNETES_SERVICE_DEBUG = os.getenv("KUBERNETES_SERVICE_DEBUG", "False") in STRING_TO_BOOL_DICT
     KUBERNETES_NAMESPACE = os.getenv("KUBERNETES_NAMESPACE", "default")

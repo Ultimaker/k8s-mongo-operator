@@ -20,4 +20,5 @@ RUN coverage report --skip-covered --show-missing
 FROM base AS build
 WORKDIR /usr/src/app
 ADD . .
+ENV PYTHONUNBUFFERED=0
 ENTRYPOINT ["python", "./main.py"]
