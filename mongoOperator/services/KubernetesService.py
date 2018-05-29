@@ -58,6 +58,9 @@ class KubernetesService:
         return self.createSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
                                  cluster_object.metadata.namespace, secret_data)
     
+    def updateOperatorAdminSecret(self, cluster_object) -> None:
+        pass
+
     def deleteOperatorAdminSecret(self, cluster_object) -> bool:
         """Delete the operator admin secret."""
         return self.deleteSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),

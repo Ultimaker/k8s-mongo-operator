@@ -69,7 +69,9 @@ class EventManager(Manager):
         """
         Handler method for updating a managed Mongo replica set.
         """
-        logging.warning("Updating a MongoDB cluster has not been implemented yet :(")
+        self.kubernetes_service.updateOperatorAdminSecret(cluster_object)
+        self.kubernetes_service.updateService(cluster_object)
+        self.kubernetes_service.updateStatefulSet(cluster_object)
     
     def _delete(self, cluster_object) -> None:
         """
