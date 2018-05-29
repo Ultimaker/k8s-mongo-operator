@@ -98,9 +98,8 @@ class KubernetesService:
                 # The secret already exists.
                 logging.warning("Tried to create a secret that already existed: {} in namespace {}"
                                 .format(secret_name, namespace))
-            else:
-                logging.exception(error)
-            return None
+                return self.getSecret(secret_name, namespace)
+            raise
 
     def updateSecret(self, secret_name: str, namespace: str, secret_data: Dict[str, str]) -> Optional[client.V1Secret]:
         """
