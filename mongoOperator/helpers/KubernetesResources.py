@@ -143,7 +143,7 @@ class KubernetesResources:
             resources=resource_requirements
         )
 
-        stateful_set.spec.template.spec.containers = [mongo_container]
+        stateful_set.spec.template.spec = client.V1PodSpec(containers=[mongo_container])
 
         # Create persistent volume claim.
         persistent_volume = client.V1PersistentVolumeClaim(
