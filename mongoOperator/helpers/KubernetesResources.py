@@ -15,7 +15,7 @@ class KubernetesResources:
     def createRandomPassword() -> str:
         """Generate a random secure password to use in secrets."""
         return uuid.uuid4().hex
-    
+
     @classmethod
     def createSecret(cls, secret_name: str, namespace: str, secret_data: Dict[str, str]) -> "client.V1Secret":
         secret = client.V1Secret()
@@ -109,13 +109,13 @@ class KubernetesResources:
             container_port=mongo_port,
             protocol="TCP"
         )
-        
+
         data_volume_mount = client.V1VolumeMount(
             name=storage_name,
             read_only=False,
             mount_path=storage_mount_path
         )
-        
+
         resource_requirements = client.V1ResourceRequirements(
             limits={"cpu": cpu_limit, "memory": memory_limit},
             requests={"cpu": cpu_limit, "memory": memory_limit}
@@ -159,5 +159,4 @@ class KubernetesResources:
         )
 
         stateful_set.spec.volumeClaimTemplates = [persistent_volume]
-
         return stateful_set

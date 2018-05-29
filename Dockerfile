@@ -1,4 +1,4 @@
-# Install pytest python library as well as add all files in current directory
+# Copyright (c) 2018 Ultimaker B.V.
 FROM python:alpine AS base
 WORKDIR /usr/src/app
 RUN apk add --no-cache git
