@@ -51,4 +51,6 @@ class TestEventManager(TestCase):
             }
         })
         stateful_set = KubernetesResources.createStatefulSet(fake_cluster_object)
-        print("stateful_set", stateful_set)
+        self.assertEqual(stateful_set.metadata.name, "my-mongo-set")
+        self.assertEqual(stateful_set.metadata.namespace, "my_namespace")
+        self.assertEqual(stateful_set.metadata.labels, KubernetesResources.createDefaultLabels("my-mongo-set"))
