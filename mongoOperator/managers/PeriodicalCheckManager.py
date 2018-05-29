@@ -1,6 +1,8 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
+import logging
+
 from kubernetes import client
 from kubernetes.client.rest import ApiException
 
@@ -53,7 +55,8 @@ class PeriodicalCheckManager(Manager):
                     # We just created it, so we can cache it right away.
                     self._cacheResource(service)
             else:
-                raise e
+                logging.exception(e)
+                return
 
         if not self._isCachedResource(service):
             # If it's not cached, we update the service to ensure it is up to date.
@@ -76,7 +79,8 @@ class PeriodicalCheckManager(Manager):
                     # We just created it, so we can cache it right away.
                     self._cacheResource(stateful_set)
             else:
-                raise e
+                logging.exception(e)
+                return
 
         if not self._isCachedResource(stateful_set):
             # If it's not cached, we update the stateful set to ensure it is up to date.
@@ -86,8 +90,37 @@ class PeriodicalCheckManager(Manager):
         self._cacheResource(stateful_set)
     
     def _collectGarbage(self):
+        """Collect garbage."""
+        self._cleanServices()
+        self._cleanStatefulSets()
+        self._cleanSecrets()
+
+    def _cleanServices(self):
+        """Clean left-over services."""
+        try:
+            services = self.kubernetes_service.listAllServicesWithLabels()
+        except ApiException as e:
+            logging.exception(e)
+            return
+
+        for service in services:
+            name = service.metadata["name"]
+            namespace = service.metadata["namespace"]
+            try:
+                self.kubernetes_service.getMongoObject(name, namespace)
+            except ApiException as e:
+                if e.status == 404:
+                    # The service exists but the Mongo object is belonged to does not anymore, we have to delete it.
+                    self.kubernetes_service.deleteService(name, namespace)
+                else:
+                    logging.exception(e)
+
+    def _cleanStatefulSets(self):
         pass
-    
+
+    def _cleanSecrets(self):
+        pass
+
     def _isCachedResource(self, resource) -> bool:
         """
         Check if we have cached the specific version of the given resource locally.

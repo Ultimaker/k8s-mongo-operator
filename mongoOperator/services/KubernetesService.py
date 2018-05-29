@@ -63,6 +63,29 @@ class KubernetesService:
                                                                   Settings.CUSTOM_OBJECT_RESOURCE_NAME,
                                                                   **kwargs)
 
+    def getMongoObject(self, name: str, namespace: str) -> Optional[client.V1beta1CustomResourceDefinition]:
+        """
+        Get a single Kubernetes Mongo object.
+        :param name: The name of the object to get.
+        :param namespace: The namespace in which to get the object.
+        :return: The custom resource object if existing, otherwise None
+        """
+        return self.custom_objects_api.get_namespaced_custom_object(Settings.CUSTOM_OBJECT_API_NAMESPACE,
+                                                                    Settings.CUSTOM_OBJECT_API_VERSION,
+                                                                    namespace,
+                                                                    Settings.CUSTOM_OBJECT_RESOURCE_NAME,
+                                                                    name)
+
+    def listAllServicesWithLabels(self, label_selector: Dict[str, str] = KubernetesResources.createDefaultLabels())\
+            -> List[client.V1Service]:
+        """Get all services with the given labels."""
+        return self.core_api.list_service_for_all_namespaces(label_selector=label_selector)
+
+    def listAllStatefulSetsWithLabels(self, label_selector: Dict[str, str] = KubernetesResources.createDefaultLabels())\
+            -> List[client.V1StatefulSet]:
+        """Get all stateful sets with the given labels."""
+        return self.apps_api.list_stateful_set_for_all_namespaces(label_selector=label_selector)
+
     def createOperatorAdminSecret(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> \
             Optional[client.V1Secret]:
         """Create the operator admin secret."""
@@ -118,15 +141,15 @@ class KubernetesService:
         secret.string_data = secret_data
         return self.core_api.patch_namespaced_secret(secret_name, namespace, secret)
 
-    def deleteSecret(self, secret_name, namespace: str) -> client.V1Status:
+    def deleteSecret(self, name: str, namespace: str) -> client.V1Status:
         """
         Deletes the given Kubernetes secret.
-        :param secret_name: Unique name of the secret.
-        :param namespace: Namespace of the secret.
+        :param name: Name of the secret to delete.
+        :param namespace: Namespace in which to delete the secret.
         :return: The deletion status.
         """
         body = client.V1DeleteOptions()
-        return self.core_api.delete_namespaced_secret(secret_name, namespace, body)
+        return self.core_api.delete_namespaced_secret(name, namespace, body)
 
     def getService(self, name: str, namespace: str) -> Optional[client.V1Service]:
         """
@@ -158,14 +181,13 @@ class KubernetesService:
         body = KubernetesResources.createService(cluster_object)
         return self.core_api.patch_namespaced_service(name, namespace, body)
 
-    def deleteService(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> client.V1Status:
+    def deleteService(self, name: str, namespace: str) -> client.V1Status:
         """
         Deletes the service with the given name.
-        :param cluster_object: The cluster object from the YAML file.
+        :param name: The name of the service to delete.
+        :param namespace: The namespace in which to delete the service.
         :return: The deletion status.
         """
-        name = cluster_object.metadata.name
-        namespace = cluster_object.metadata.namespace
         body = client.V1DeleteOptions()
         return self.core_api.delete_namespaced_service(name, namespace, body)
 
@@ -199,13 +221,12 @@ class KubernetesService:
         body = KubernetesResources.createService(cluster_object)
         return self.apps_api.patch_namespaced_stateful_set(name, namespace, body)
 
-    def deleteStatefulSet(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> bool:
+    def deleteStatefulSet(self, name: str, namespace: str) -> bool:
         """
         Deletes the stateful set for the given cluster object.
-        :param cluster_object: The cluster object from the YAML file.
+        :param name: The name of the stateful set to delete.
+        :param namespace: The namespace in which to delete the stateful set.
         :return: The updated stateful set.
         """
-        name = cluster_object.metadata.name
-        namespace = cluster_object.metadata.namespace
         body = client.V1DeleteOptions()
         return self.apps_api.delete_namespaced_stateful_set(name, namespace, body)

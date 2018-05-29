@@ -28,11 +28,11 @@ class KubernetesResources:
         return secret
 
     @staticmethod
-    def createDefaultLabels(name: str) -> Dict[str, str]:
+    def createDefaultLabels(name: str = None) -> Dict[str, str]:
         return {
             "operated-by": Settings.CUSTOM_OBJECT_API_NAMESPACE,
             "heritage": Settings.CUSTOM_OBJECT_RESOURCE_NAME,
-            "name": name
+            "name": name if name else ""
         }
 
     @classmethod
