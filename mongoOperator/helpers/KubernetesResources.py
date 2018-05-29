@@ -36,11 +36,11 @@ class KubernetesResources:
         }
 
     @classmethod
-    def createService(cls, cluster_object) -> "client.V1Service":
+    def createService(cls, cluster_object: "client.V1beta1CustomResourceDefinition") -> "client.V1Service":
         
         # Parse cluster data object.
-        name = cluster_object['metadata']['name']
-        namespace = cluster_object['metadata']['namespace']
+        name = cluster_object.metadata['name']
+        namespace = cluster_object.metadata['namespace']
         
         # Create service.
         service = client.V1Service()
@@ -66,14 +66,14 @@ class KubernetesResources:
         return service
 
     @classmethod
-    def createStatefulSet(cls, cluster_object) -> "client.V1beta1StatefulSet":
+    def createStatefulSet(cls, cluster_object: "client.V1beta1CustomResourceDefinition") -> "client.V1beta1StatefulSet":
         
         # Parse cluster data object.
-        name = cluster_object['metadata']['name']
-        namespace = cluster_object['metadata']['namespace']
-        replicas = cluster_object['spec']['mongodb']['replicas']
-        cpu_limit = cluster_object['spec']['mongodb']['cpu_limit']
-        memory_limit = cluster_object['spec']['mongodb']['memory_limit']
+        name = cluster_object.metadata['name']
+        namespace = cluster_object.metadata['namespace']
+        replicas = cluster_object.spec['mongodb']['replicas']
+        cpu_limit = cluster_object.spec['mongodb']['cpu_limit']
+        memory_limit = cluster_object.spec['mongodb']['memory_limit']
 
         # Fixed values (for now).
         mongo_image = "mongo:3.6.4"
