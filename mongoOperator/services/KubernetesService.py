@@ -2,7 +2,7 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 import yaml
 from kubernetes import client
@@ -27,13 +27,17 @@ class KubernetesService:
         kubernetes_config.host = Settings.KUBERNETES_SERVICE_HOST
         kubernetes_config.verify_ssl = not Settings.KUBERNETES_SERVICE_SKIP_TLS
         kubernetes_config.debug = Settings.KUBERNETES_SERVICE_DEBUG
-        api_client = client.ApiClient(configuration=kubernetes_config)
+        self.api_client = client.ApiClient(configuration=kubernetes_config)
 
         # Re-usable API client instances.
-        self.custom_objects_api = client.CustomObjectsApi(api_client)
-        self.core_api = client.CoreV1Api(api_client)
-        self.extensions_api = client.ApiextensionsV1beta1Api(api_client)
-        self.apps_api = client.AppsV1beta1Api(api_client)
+        self.custom_objects_api = client.CustomObjectsApi(self.api_client)
+        self.core_api = client.CoreV1Api(self.api_client)
+        self.extensions_api = client.ApiextensionsV1beta1Api(self.api_client)
+        self.apps_api = client.AppsV1beta1Api(self.api_client)
+
+    @property
+    def apiClient(self):
+        return self.api_client
 
     def createMongoObjectDefinition(self) -> None:
         """Create the custom resource definition."""
@@ -47,7 +51,7 @@ class KubernetesService:
                 body = yaml.load(data)
                 self.extensions_api.create_custom_resource_definition(body)
 
-    def listMongoObjects(self, **kwargs) -> list:
+    def listMongoObjects(self, **kwargs) -> List[client.V1beta1CustomResourceDefinition]:
         """
         Get all Kubernetes objects of our custom resource type.
         :param kwargs: Additional API flags.
@@ -59,13 +63,14 @@ class KubernetesService:
                                                                   Settings.CUSTOM_OBJECT_RESOURCE_NAME,
                                                                   **kwargs)
 
-    def createOperatorAdminSecret(self, cluster_object: client.V1beta1CustomResourceDefinition) -> Optional[client.V1Secret]:
+    def createOperatorAdminSecret(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> \
+            Optional[client.V1Secret]:
         """Create the operator admin secret."""
         secret_data = {"username": "root", "password": KubernetesResources.createRandomPassword()}
         return self.createSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
                                  cluster_object.metadata.namespace, secret_data)
 
-    def deleteOperatorAdminSecret(self, cluster_object: client.V1beta1CustomResourceDefinition) -> client.V1Status:
+    def deleteOperatorAdminSecret(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> client.V1Status:
         """Delete the operator admin secret."""
         return self.deleteSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
                                  cluster_object.metadata.namespace)
@@ -123,7 +128,16 @@ class KubernetesService:
         body = client.V1DeleteOptions()
         return self.core_api.delete_namespaced_secret(secret_name, namespace, body)
 
-    def createService(self, cluster_object: client.V1beta1CustomResourceDefinition) -> client.V1Service:
+    def getService(self, name: str, namespace: str) -> Optional[client.V1Service]:
+        """
+        Gets an existing service from the cluster.
+        :param name: The name of the service to get.
+        :param namespace: The namespace in which to get the service.
+        :return: The service object if it exists, otherwise None.
+        """
+        return self.core_api.read_namespaced_service(name, namespace)
+
+    def createService(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> client.V1Service:
         """
         Creates the given cluster.
         :param cluster_object: The cluster object from the YAML file.
@@ -133,7 +147,7 @@ class KubernetesService:
         body = KubernetesResources.createService(cluster_object)
         return self.core_api.create_namespaced_service(namespace, body)
 
-    def updateService(self, cluster_object: client.V1beta1CustomResourceDefinition) -> client.V1Service:
+    def updateService(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> client.V1Service:
         """
         Updates the given cluster.
         :param cluster_object: The cluster object from the YAML file.
@@ -144,7 +158,7 @@ class KubernetesService:
         body = KubernetesResources.createService(cluster_object)
         return self.core_api.patch_namespaced_service(name, namespace, body)
 
-    def deleteService(self, cluster_object: client.V1beta1CustomResourceDefinition) -> client.V1Status:
+    def deleteService(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> client.V1Status:
         """
         Deletes the service with the given name.
         :param cluster_object: The cluster object from the YAML file.
@@ -155,7 +169,16 @@ class KubernetesService:
         body = client.V1DeleteOptions()
         return self.core_api.delete_namespaced_service(name, namespace, body)
 
-    def createStatefulSet(self, cluster_object: client.V1beta1CustomResourceDefinition) -> client.V1beta1StatefulSet:
+    def getStatefulSet(self, name: str, namespace: str) -> Optional[client.V1beta1StatefulSet]:
+        """
+        Get an existing stateful set from the cluster.
+        :param name: The name of the stateful set to get.
+        :param namespace: The namespace in which to get the stateful set.
+        :return: The stateful set object if existing, otherwise None.
+        """
+        return self.apps_api.read_namespaced_stateful_set(name, namespace)
+
+    def createStatefulSet(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> client.V1beta1StatefulSet:
         """
         Creates the stateful set for the given cluster object.
         :param cluster_object: The cluster object from the YAML file.
@@ -165,7 +188,7 @@ class KubernetesService:
         body = KubernetesResources.createService(cluster_object)
         return self.apps_api.create_namespaced_stateful_set(namespace, body)
 
-    def updateStatefulSet(self, cluster_object: client.V1beta1CustomResourceDefinition) -> client.V1beta1StatefulSet:
+    def updateStatefulSet(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> client.V1beta1StatefulSet:
         """
         Updates the stateful set for the given cluster object.
         :param cluster_object: The cluster object from the YAML file.
@@ -176,7 +199,7 @@ class KubernetesService:
         body = KubernetesResources.createService(cluster_object)
         return self.apps_api.patch_namespaced_stateful_set(name, namespace, body)
 
-    def deleteStatefulSet(self, cluster_object: client.V1beta1CustomResourceDefinition) -> bool:
+    def deleteStatefulSet(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> bool:
         """
         Deletes the stateful set for the given cluster object.
         :param cluster_object: The cluster object from the YAML file.

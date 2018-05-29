@@ -1,8 +1,12 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
+from kubernetes import client
+from kubernetes.client.rest import ApiException
+
 from mongoOperator.managers.Manager import Manager
 from mongoOperator.services.KubernetesService import KubernetesService
+from mongoOperator.services.MongoService import MongoService
 
 
 class PeriodicalCheckManager(Manager):
@@ -13,6 +17,7 @@ class PeriodicalCheckManager(Manager):
     CACHED_RESOURCES = {}
 
     kubernetes_service = KubernetesService()
+    mongo_service = MongoService()
     
     def _execute(self):
         """Execute the manager logic."""
@@ -24,7 +29,61 @@ class PeriodicalCheckManager(Manager):
         pass
 
     def _checkExisting(self):
-        pass
+        """
+        Check all Mongo objects and see if the sub objects are available.
+        If they are not, they should be (re-)created to ensure the cluster is in the expected state.
+        """
+        mongo_objects = self.kubernetes_service.listMongoObjects()
+        for cluster_object in mongo_objects:
+            self._checkService(cluster_object)
+            self._checkStatefulSet(cluster_object)
+            self.mongo_service.checkReplicaSetNeedsSetup(cluster_object)
+
+    def _checkService(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> None:
+        """Check and ensure the service is running."""
+        name = cluster_object.metadata["name"]
+        namespace = cluster_object.metadata["namespace"]
+        try:
+            service = self.kubernetes_service.getService(name, namespace)
+        except ApiException as e:
+            if e.status == 404:
+                # The service does not exist but should, so we create it.
+                service = self.kubernetes_service.createService(cluster_object)
+                if service:
+                    # We just created it, so we can cache it right away.
+                    self._cacheResource(service)
+            else:
+                raise e
+
+        if not self._isCachedResource(service):
+            # If it's not cached, we update the service to ensure it is up to date.
+            service = self.kubernetes_service.updateService(cluster_object)
+
+        # Finally we cache the latest known version of the object.
+        self._cacheResource(service)
+
+    def _checkStatefulSet(self, cluster_object) -> None:
+        """Check and ensure the stateful set is running."""
+        name = cluster_object.metadata["name"]
+        namespace = cluster_object.metadata["namespace"]
+        try:
+            stateful_set = self.kubernetes_service.getStatefulSet(name, namespace)
+        except ApiException as e:
+            if e.status == 404:
+                # The stateful set does not exist but it should, so we create it.
+                stateful_set = self.kubernetes_service.createStatefulSet(cluster_object)
+                if stateful_set:
+                    # We just created it, so we can cache it right away.
+                    self._cacheResource(stateful_set)
+            else:
+                raise e
+
+        if not self._isCachedResource(stateful_set):
+            # If it's not cached, we update the stateful set to ensure it is up to date.
+            stateful_set = self.kubernetes_service.updateStatefulSet(cluster_object)
+
+        # Finally we cache the latest known version of the object.
+        self._cacheResource(stateful_set)
     
     def _collectGarbage(self):
         pass

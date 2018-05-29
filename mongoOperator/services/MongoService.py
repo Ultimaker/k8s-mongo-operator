@@ -11,7 +11,7 @@ class MongoService:
     def getMemberHostname(self):
         pass
     
-    def checkReplicaSetNeedsSetup(self):
+    def checkReplicaSetNeedsSetup(self, cluster_object):
         pass
     
     def initializeReplicaSet(self):
