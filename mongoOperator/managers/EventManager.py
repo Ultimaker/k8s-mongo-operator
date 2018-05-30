@@ -20,13 +20,16 @@ class EventTypes(Enum):
 
 
 class EventManager(Manager):
+    """
+    Manager that processes Kubernetes events.
+    """
     
     event_watcher = Watch()
     kubernetes_service = KubernetesService()
 
     def _execute(self) -> None:
         """Execute the manager logic."""
-        for event in self.event_watcher.stream(func = self.kubernetes_service.listMongoObjects,
+        for event in self.event_watcher.stream(self.kubernetes_service.listMongoObjects,
                                                _request_timeout = self._sleep_seconds):
             self._processEvent(event)
 
@@ -60,7 +63,8 @@ class EventManager(Manager):
         try:
             event_type_to_action_map[event["type"]](event["object"])
         except ApiException as error:
-            logging.exception("API error with {} object {}: {}", event["type"], event["object"], error)
+            logging.exception("API error with %s object %s: %s", event["type"], event["object"], error)
+            raise
 
     def _add(self, cluster_object: V1beta1CustomResourceDefinition) -> None:
         """

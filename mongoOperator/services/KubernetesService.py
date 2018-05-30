@@ -186,13 +186,14 @@ class KubernetesService:
         body = KubernetesResources.createService(cluster_object)
         return self.core_api.patch_namespaced_service(name, namespace, body)
 
-    def deleteService(self, name: str, namespace: str) -> client.V1Status:
+    def deleteService(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> client.V1Status:
         """
         Deletes the service with the given name.
-        :param name: The name of the service to delete.
-        :param namespace: The namespace in which to delete the service.
+        :param cluster_object: The cluster object from the YAML file.
         :return: The deletion status.
         """
+        name = cluster_object.metadata.name
+        namespace = cluster_object.metadata.namespace
         body = client.V1DeleteOptions()
         return self.core_api.delete_namespaced_service(name, namespace, body)
 
@@ -226,12 +227,13 @@ class KubernetesService:
         body = KubernetesResources.createService(cluster_object)
         return self.apps_api.patch_namespaced_stateful_set(name, namespace, body)
 
-    def deleteStatefulSet(self, name: str, namespace: str) -> bool:
+    def deleteStatefulSet(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> bool:
         """
         Deletes the stateful set for the given cluster object.
-        :param name: The name of the stateful set to delete.
-        :param namespace: The namespace in which to delete the stateful set.
+        :param cluster_object: The cluster object from the YAML file.
         :return: The updated stateful set.
         """
+        name = cluster_object.metadata.name
+        namespace = cluster_object.metadata.namespace
         body = client.V1DeleteOptions()
         return self.apps_api.delete_namespaced_stateful_set(name, namespace, body)

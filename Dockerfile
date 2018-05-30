@@ -14,7 +14,7 @@ RUN pip install -r requirements-testing.txt
 ARG cache=1
 ADD . .
 RUN ENV_NAME=testing ASYNC_TEST_TIMEOUT=15 coverage run --source="mongoOperator" -m pytest
-RUN coverage report --skip-covered --show-missing
+RUN coverage report --skip-covered --show-missing  --fail-under=66
 
 # This is the container build statements that will create the container meant for deployment
 FROM base AS build
