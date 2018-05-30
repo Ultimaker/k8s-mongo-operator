@@ -20,19 +20,23 @@ class EventTypes(Enum):
 
 
 class EventManager(Manager):
+    """
+    Manager that processes Kubernetes events.
+    """
     
     event_watcher = Watch()
     kubernetes_service = KubernetesService()
 
-    def _execute(self) -> None:
+    def execute(self) -> None:
         """Execute the manager logic."""
-        for event in self.event_watcher.stream(func = self.kubernetes_service.listMongoObjects,
+        for event in self.event_watcher.stream(self.kubernetes_service.listMongoObjects,
                                                _request_timeout = self._sleep_seconds):
             self._processEvent(event)
 
-    def _beforeShuttingDown(self) -> None:
+    @classmethod
+    def beforeShuttingDown(cls) -> None:
         """Stop the event watcher before closing the thread."""
-        self.event_watcher.stop()
+        cls.event_watcher.stop()
 
     def _processEvent(self, event) -> None:
         """
@@ -60,7 +64,8 @@ class EventManager(Manager):
         try:
             event_type_to_action_map[event["type"]](event["object"])
         except ApiException as error:
-            logging.exception("API error with {} object {}: {}", event["type"], event["object"], error)
+            logging.exception("API error with %s object %s: %s", event["type"], event["object"], error)
+            raise
 
     def _add(self, cluster_object: V1beta1CustomResourceDefinition) -> None:
         """
@@ -82,6 +87,8 @@ class EventManager(Manager):
         """
         Handler method for deleting a managed Mongo replica set.
         """
-        self.kubernetes_service.deleteStatefulSet(cluster_object)
-        self.kubernetes_service.deleteService(cluster_object)
-        self.kubernetes_service.deleteOperatorAdminSecret(cluster_object)
+        name = cluster_object.metadata.name
+        namespace = cluster_object.metadata.namespace
+        self.kubernetes_service.deleteStatefulSet(name, namespace)
+        self.kubernetes_service.deleteService(name, namespace)
+        self.kubernetes_service.deleteOperatorAdminSecret(name, namespace)
