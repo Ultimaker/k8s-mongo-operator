@@ -219,7 +219,7 @@ class TestKubernetesService(TestCase):
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.CoreV1Api().list_secret_for_all_namespaces.return_value, result)
 
-    @patch("mongoOperator.helpers.KubernetesResources.KubernetesResources.createRandomPassword", lambda: "random-password")
+    @patch("mongoOperator.helpers.KubernetesResources.uuid.uuid4", lambda: MagicMock(hex = "random-password"))
     def test_createOperatorAdminSecret(self, client_mock):
         service = KubernetesService()
         client_mock.reset_mock()

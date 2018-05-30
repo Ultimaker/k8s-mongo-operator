@@ -35,10 +35,6 @@ class KubernetesService:
         self.extensions_api = client.ApiextensionsV1beta1Api(self.api_client)
         self.apps_api = client.AppsV1beta1Api(self.api_client)
 
-    @property
-    def apiClient(self):
-        return self.api_client
-
     def createMongoObjectDefinition(self) -> None:
         """Create the custom resource definition."""
         available_crds = {crd.spec.names.kind.lower() for crd in
