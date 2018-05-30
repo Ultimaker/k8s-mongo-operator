@@ -28,23 +28,18 @@ class Manager(ABC):
         while not self._shutting_down_event.isSet():
             try:
                 logging.debug("Executing manager {}...".format(self.__class__.__name__))
-                self._execute()
+                self.execute()
             except Exception as exception:
                 logging.error("An exception occurred in a manager: {}".format(exception))
             finally:
                 sleep(self._sleep_seconds)
         else:
             logging.info("Thread shutting down...")
-            self._beforeShuttingDown()
+            self.beforeShuttingDown()
 
-    def _execute(self) -> None:
-        """
-        Runs the manager once. Must be implemented in subclasses.
-        """
-        raise NotImplementedError
+    def execute(self) -> None:
+        """ Runs the manager once. Must be implemented in subclasses. """
 
-    def _beforeShuttingDown(self) -> None:
-        """
-        Runs a cleanup when the manager is going to shut down.
-        """
-        raise NotImplementedError
+    @classmethod
+    def beforeShuttingDown(cls) -> None:
+        """ Runs a cleanup when the manager is going to shut down. """

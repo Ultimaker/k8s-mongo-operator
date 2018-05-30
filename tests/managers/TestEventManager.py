@@ -10,10 +10,10 @@ from kubernetes.client import V1beta1CustomResourceDefinition, V1ObjectMeta
 from kubernetes.client.rest import ApiException
 
 from mongoOperator.managers.EventManager import EventManager
-from mongoOperator.services.KubernetesService import KubernetesService
 
 
 class TestEventManager(TestCase):
+    maxDiff = None
     
     def setUp(self):
         self.shutdown_event = threading.Event()
@@ -31,7 +31,7 @@ class TestEventManager(TestCase):
         expected_calls = [
             call.stream(EventManager.kubernetes_service.listMongoObjects,
                         _request_timeout = 0.01),
-            call.stop()
+            call.stop(),
         ]
         self.assertEquals(expected_calls, watcher_mock.mock_calls)
 
@@ -43,16 +43,18 @@ class TestEventManager(TestCase):
             {"type": "MODIFIED", "object": self.cluster_example},
             {"type": "DELETED", "object": self.cluster_example}
         ]
-        self.manager._execute()
+        self.manager.execute()
+        name = self.cluster_example.metadata.name
+        namespace = self.cluster_example.metadata.namespace
         expected_calls = [
             call.createOperatorAdminSecret(self.cluster_example),
             call.createService(self.cluster_example),
             call.createStatefulSet(self.cluster_example),
             call.updateService(self.cluster_example),
             call.updateStatefulSet(self.cluster_example),
-            call.deleteStatefulSet(self.cluster_example),
-            call.deleteService(self.cluster_example),
-            call.deleteOperatorAdminSecret(self.cluster_example),
+            call.deleteStatefulSet(name, namespace),
+            call.deleteService(name, namespace),
+            call.deleteOperatorAdminSecret(name, namespace),
         ]
         self.assertEquals(expected_calls, svc_mock.mock_calls)
 

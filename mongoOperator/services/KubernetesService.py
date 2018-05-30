@@ -98,10 +98,14 @@ class KubernetesService:
         return self.createSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
                                  cluster_object.metadata.namespace, secret_data)
 
-    def deleteOperatorAdminSecret(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> client.V1Status:
-        """Delete the operator admin secret."""
-        return self.deleteSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
-                                 cluster_object.metadata.namespace)
+    def deleteOperatorAdminSecret(self, cluster_name: str, namespace: str) -> client.V1Status:
+        """
+        Delete the operator admin secret.
+        :param cluster_name: Name of the cluster.
+        :param namespace: Namespace in which to delete the secret.
+        :return: The deletion status.
+        """
+        return self.deleteSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_name), namespace)
 
     def getSecret(self, secret_name: str, namespace: str) -> Optional[client.V1Secret]:
         """
@@ -186,14 +190,13 @@ class KubernetesService:
         body = KubernetesResources.createService(cluster_object)
         return self.core_api.patch_namespaced_service(name, namespace, body)
 
-    def deleteService(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> client.V1Status:
+    def deleteService(self, name: str, namespace: str) -> client.V1Status:
         """
         Deletes the service with the given name.
-        :param cluster_object: The cluster object from the YAML file.
+        :param name: The name of the service to delete.
+        :param namespace: The namespace in which to delete the service.
         :return: The deletion status.
         """
-        name = cluster_object.metadata.name
-        namespace = cluster_object.metadata.namespace
         body = client.V1DeleteOptions()
         return self.core_api.delete_namespaced_service(name, namespace, body)
 
@@ -227,13 +230,12 @@ class KubernetesService:
         body = KubernetesResources.createService(cluster_object)
         return self.apps_api.patch_namespaced_stateful_set(name, namespace, body)
 
-    def deleteStatefulSet(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> bool:
+    def deleteStatefulSet(self, name: str, namespace: str) -> bool:
         """
         Deletes the stateful set for the given cluster object.
-        :param cluster_object: The cluster object from the YAML file.
+        :param name: The name of the stateful set to delete.
+        :param namespace: The namespace in which to delete the stateful set.
         :return: The updated stateful set.
         """
-        name = cluster_object.metadata.name
-        namespace = cluster_object.metadata.namespace
         body = client.V1DeleteOptions()
         return self.apps_api.delete_namespaced_stateful_set(name, namespace, body)
