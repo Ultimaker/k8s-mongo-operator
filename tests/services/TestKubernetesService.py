@@ -117,68 +117,70 @@ class TestKubernetesService(TestCase):
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.CustomObjectsApi().get_namespaced_custom_object.return_value, result)
 
-    # TODO
-    # def test_listAllServicesWithLabels_default(self, client_mock):
-    #     service = KubernetesService()
-    #     client_mock.reset_mock()
-    #
-    #     result = service.listAllServicesWithLabels()
-    #     expected_calls = []
-    #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual([], result)
+    def test_listAllServicesWithLabels_default(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
 
-    # TODO
-    # def test_listAllServicesWithLabels_custom(self, client_mock):
-    #     service = KubernetesService()
-    #     client_mock.reset_mock()
-    #
-    #     label_selector = {"operated-by": "me", "heritage": "mongo", "name": "name"}
-    #     result = service.listAllServicesWithLabels(label_selector)
-    #     expected_calls = []
-    #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual([], result)
+        result = service.listAllServicesWithLabels()
+        expected_calls = [
+            call.CoreV1Api().list_service_for_all_namespaces(label_selector=KubernetesResources.createDefaultLabels())
+        ]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.CoreV1Api().list_service_for_all_namespaces.return_value, result)
 
-    # TODO
-    # def test_listAllStatefulSetsWithLabels_default(self, client_mock):
-    #     service = KubernetesService()
-    #     client_mock.reset_mock()
-    #
-    #     result = service.listAllStatefulSetsWithLabels()
-    #     expected_calls = []
-    #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual([], result)
+    def test_listAllServicesWithLabels_custom(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
 
-    # TODO
-    # def test_listAllStatefulSetsWithLabels_custom(self, client_mock):
-    #     service = KubernetesService()
-    #     client_mock.reset_mock()
-    #
-    #     label_selector = {"operated-by": "me", "heritage": "mongo", "name": "name"}
-    #     result = service.listAllStatefulSetsWithLabels(label_selector)
-    #     expected_calls = []
-    #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual([], result)
+        label_selector = {"operated-by": "me", "heritage": "mongo", "name": "name"}
+        result = service.listAllServicesWithLabels(label_selector)
+        expected_calls = [call.CoreV1Api().list_service_for_all_namespaces(label_selector=label_selector)]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.CoreV1Api().list_service_for_all_namespaces.return_value, result)
 
-    # TODO
-    # def test_listAllSecretsWithLabels_default(self, client_mock):
-    #     service = KubernetesService()
-    #     client_mock.reset_mock()
-    #
-    #     result = service.listAllSecretsWithLabels()
-    #     expected_calls = []
-    #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual([], result)
+    def test_listAllStatefulSetsWithLabels_default(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
 
-    # TODO
-    # def test_listAllSecretsWithLabels(self, client_mock):
-    #     service = KubernetesService()
-    #     client_mock.reset_mock()
-    #
-    #     label_selector = {"operated-by": "me", "heritage": "mongo", "name": "name"}
-    #     result = service.listAllSecretsWithLabels(label_selector)
-    #     expected_calls = []
-    #    self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual([], result)
+        result = service.listAllStatefulSetsWithLabels()
+        expected_calls = [call.AppsV1beta1Api().list_stateful_set_for_all_namespaces(
+            label_selector=KubernetesResources.createDefaultLabels()
+        )]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.AppsV1beta1Api().list_stateful_set_for_all_namespaces.return_value, result)
+
+    def test_listAllStatefulSetsWithLabels_custom(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+
+        label_selector = {"operated-by": "me", "heritage": "mongo", "name": "name"}
+        result = service.listAllStatefulSetsWithLabels(label_selector)
+        expected_calls = [call.AppsV1beta1Api().list_stateful_set_for_all_namespaces(label_selector=label_selector)]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.AppsV1beta1Api().list_stateful_set_for_all_namespaces.return_value, result)
+
+    def test_listAllSecretsWithLabels_default(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+
+        result = service.listAllSecretsWithLabels()
+        expected_calls = [
+            call.CoreV1Api().list_secret_for_all_namespaces(label_selector=KubernetesResources.createDefaultLabels())
+        ]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.CoreV1Api().list_secret_for_all_namespaces.return_value, result)
+
+    def test_listAllSecretsWithLabels_custom(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+
+        label_selector = {"operated-by": "me", "heritage": "mongo", "name": "name"}
+        result = service.listAllSecretsWithLabels(label_selector)
+        expected_calls = [
+            call.CoreV1Api().list_secret_for_all_namespaces(label_selector=label_selector)
+        ]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.CoreV1Api().list_secret_for_all_namespaces.return_value, result)
 
     @patch("mongoOperator.helpers.KubernetesResources.KubernetesResources.createRandomPassword", lambda: "random-password")
     def test_createOperatorAdminSecret(self, client_mock):
@@ -312,7 +314,7 @@ class TestKubernetesService(TestCase):
     #     result = service.updateService(self.cluster_object)
     #     expected_calls = []
     #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual([], result)
+    #     self.assertEqual(client_mock, result)
 
     # TODO:
     # def test_deleteService(self, client_mock):
@@ -322,7 +324,7 @@ class TestKubernetesService(TestCase):
     #     result = service.deleteService(self.name, self.namespace)
     #     expected_calls = []
     #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual([], result)
+    #     self.assertEqual(client_mock, result)
 
     # TODO:
     # def test_getStatefulSet(self, client_mock):
@@ -332,7 +334,7 @@ class TestKubernetesService(TestCase):
     #     result = service.getStatefulSet(self.name, self.namespace)
     #     expected_calls = []
     #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual([], result)
+    #     self.assertEqual(client_mock, result)
 
     # TODO:
     # def test_createStatefulSet(self, client_mock):
@@ -342,7 +344,7 @@ class TestKubernetesService(TestCase):
     #     result = service.createStatefulSet(self.cluster_object)
     #     expected_calls = []
     #    self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual([], result)
+    #     self.assertEqual(client_mock, result)
 
     # TODO:
     # def test_updateStatefulSet(self, client_mock):
@@ -352,7 +354,7 @@ class TestKubernetesService(TestCase):
     #     result = service.updateStatefulSet(self.cluster_object)
     #     expected_calls = []
     #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual([], result)
+    #     self.assertEqual(client_mock, result)
 
     # TODO:
     # def test_deleteStatefulSet(self, client_mock):
@@ -361,4 +363,4 @@ class TestKubernetesService(TestCase):
     #     result = service.deleteStatefulSet(self.name, self.namespace)
     #     expected_calls = []
     #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual([], result)
+    #     self.assertEqual(client_mock, result)
