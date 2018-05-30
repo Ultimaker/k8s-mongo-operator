@@ -11,3 +11,8 @@ def getExampleClusterDefinition():
     cluster_dict["api_version"] = cluster_dict.pop("apiVersion")
     cluster_dict["metadata"] = V1ObjectMeta(**cluster_dict["metadata"])
     return V1beta1CustomResourceDefinition(**cluster_dict)
+
+
+def dict_eq(one, other):
+    # [(k, getattr(self, k), getattr(other, k)) for k in self.__dict__ if getattr(self, k) != getattr(other, k)]
+    return other and one.__dict__ == other.__dict__

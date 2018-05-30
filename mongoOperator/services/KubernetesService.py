@@ -41,15 +41,15 @@ class KubernetesService:
 
     def createMongoObjectDefinition(self) -> None:
         """Create the custom resource definition."""
-        available_crds = [crd['spec']['names']['kind'].lower() for crd in
-                          self.extensions_api.list_custom_resource_definition().to_dict()['items']]
+        available_crds = {crd.spec.names.kind.lower() for crd in
+                          self.extensions_api.list_custom_resource_definition().items}
         if Settings.CUSTOM_OBJECT_RESOURCE_NAME not in available_crds:
             # Create it if our CRD doesn't exists yet.
             logging.info("Custom resource definition {} not found in cluster, creating it...".format(
                     Settings.CUSTOM_OBJECT_RESOURCE_NAME))
-            with open("../../mongo_crd.yaml") as data:
-                body = yaml.load(data)
-                self.extensions_api.create_custom_resource_definition(body)
+            with open("mongo_crd.yaml") as f:
+                body = yaml.load(f)
+            self.extensions_api.create_custom_resource_definition(body)
 
     def listMongoObjects(self, **kwargs) -> List[client.V1beta1CustomResourceDefinition]:
         """
@@ -128,7 +128,7 @@ class KubernetesService:
             # Create the secret object.
             secret_body = KubernetesResources.createSecret(secret_name, namespace, secret_data)
             secret = self.core_api.create_namespaced_secret(namespace, secret_body)
-            logging.info("Created secret {} in namespace {}".format(secret_name, namespace))
+            logging.info("Created secret %s in namespace %s", secret_name, namespace)
             return secret
         except ApiException as error:
             if error.status == 409:

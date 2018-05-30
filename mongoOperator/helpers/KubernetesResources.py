@@ -39,8 +39,8 @@ class KubernetesResources:
     def createService(cls, cluster_object: "client.V1beta1CustomResourceDefinition") -> "client.V1Service":
         
         # Parse cluster data object.
-        name = cluster_object.metadata['name']
-        namespace = cluster_object.metadata['namespace']
+        name = cluster_object.metadata.name
+        namespace = cluster_object.metadata.namespace
         
         # Create service.
         service = client.V1Service()
@@ -58,7 +58,7 @@ class KubernetesResources:
         )
 
         service.spec = client.V1ServiceSpec(
-            cluster_ip="None",
+            cluster_ip="None",  # create headless service, no load-balancing and a single service IP
             selector=cls.createDefaultLabels(name),
             ports=[mongodb_port]
         )
