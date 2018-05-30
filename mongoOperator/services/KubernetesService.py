@@ -6,7 +6,7 @@ from typing import Dict, Optional, List
 
 import yaml
 from kubernetes import client
-from kubernetes.client import Configuration
+from kubernetes.client import Configuration, V1DeleteOptions
 from kubernetes.client.rest import ApiException
 
 from mongoOperator.Settings import Settings
@@ -157,7 +157,7 @@ class KubernetesService:
         :param namespace: Namespace in which to delete the secret.
         :return: The deletion status.
         """
-        body = client.V1DeleteOptions()
+        body = V1DeleteOptions()
         return self.core_api.delete_namespaced_secret(name, namespace, body)
 
     def getService(self, name: str, namespace: str) -> Optional[client.V1Service]:
