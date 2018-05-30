@@ -5,11 +5,10 @@ import threading
 from unittest import TestCase
 from unittest.mock import patch, call
 
-import yaml
-from kubernetes.client import V1beta1CustomResourceDefinition, V1ObjectMeta
 from kubernetes.client.rest import ApiException
 
 from mongoOperator.managers.EventManager import EventManager
+from tests.test_utils import getExampleClusterDefinition
 
 
 class TestEventManager(TestCase):
@@ -18,19 +17,14 @@ class TestEventManager(TestCase):
     def setUp(self):
         self.shutdown_event = threading.Event()
         self.manager = EventManager(self.shutdown_event, sleep_seconds=0.01)
-        with open("./examples/mongo.yaml") as f:
-            cluster_dict = yaml.load(f)
-        cluster_dict["api_version"] = cluster_dict.pop("apiVersion")
-        cluster_dict["metadata"] = V1ObjectMeta(**cluster_dict["metadata"])
-        self.cluster_example = V1beta1CustomResourceDefinition(**cluster_dict)
+        self.cluster_example = getExampleClusterDefinition()
 
     @patch("mongoOperator.managers.EventManager.EventManager.event_watcher")
     def test_run(self, watcher_mock):
         watcher_mock.stream.side_effect = lambda func, _request_timeout: self.shutdown_event.set()
         self.manager.run()
         expected_calls = [
-            call.stream(EventManager.kubernetes_service.listMongoObjects,
-                        _request_timeout = 0.01),
+            call.stream(EventManager.kubernetes_service.listMongoObjects, _request_timeout = 0.01),
             call.stop(),
         ]
         self.assertEquals(expected_calls, watcher_mock.mock_calls)

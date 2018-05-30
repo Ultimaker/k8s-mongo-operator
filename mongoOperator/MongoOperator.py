@@ -14,32 +14,33 @@ class MongoOperator:
     The Mongo operator manages MongoDB replica sets and backups in a Kubernetes cluster.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, check_seconds: float = 5.0, sleep_seconds: float = 10.0) -> None:
         self._shutting_down = threading.Event()
         self._manager_threads = []
-        
+        self._check_seconds = check_seconds
+
         # Create the periodic replica set check in a separate thread.
         self._manager_threads.append(threading.Thread(
             name = "PeriodicCheck",
             target = self._startPeriodicalCheck,
-            args = (self._shutting_down, 10)
+            args = (self._shutting_down, sleep_seconds)
         ))
         
         # Create the Kubernetes event listener in a separate thread.
         self._manager_threads.append(threading.Thread(
             name = "EventListener",
             target = self._startEventListener,
-            args = (self._shutting_down, 10)
+            args = (self._shutting_down, sleep_seconds)
         ))
 
     def run(self):
         try:
             while True:
-                # Run the short-lived manager threads every 5 seconds but only allow a single instance per type.
+                # Run the short-lived manager threads every few seconds but only allow a single instance per type.
                 for thread in self._manager_threads:
                     if not thread.ident:
                         thread.start()
-                sleep(5)
+                sleep(self._check_seconds)
         except KeyboardInterrupt:
             logging.info("Application interrupted, stopping threads gracefully...")
             self._shutting_down.set()
@@ -47,11 +48,11 @@ class MongoOperator:
                 thread.join()
     
     @staticmethod
-    def _startPeriodicalCheck(shutting_down_event: "threading.Event", sleep_seconds: int) -> None:
+    def _startPeriodicalCheck(shutting_down_event: "threading.Event", sleep_seconds: float) -> None:
         manager = PeriodicalCheckManager(shutting_down_event, sleep_seconds)
         manager.run()
     
     @staticmethod
-    def _startEventListener(shutting_down_event: "threading.Event", sleep_seconds: int) -> None:
+    def _startEventListener(shutting_down_event: "threading.Event", sleep_seconds: float) -> None:
         manager = EventManager(shutting_down_event, sleep_seconds)
         manager.run()
