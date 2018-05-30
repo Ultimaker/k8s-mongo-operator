@@ -86,6 +86,11 @@ class KubernetesService:
         """Get all stateful sets with the given labels."""
         return self.apps_api.list_stateful_set_for_all_namespaces(label_selector=label_selector)
 
+    def listAllSecretsWithLabels(self, label_selector: Dict[str, str] = KubernetesResources.createDefaultLabels())\
+            -> List[client.V1Secret]:
+        """Get al secrets with the given labels."""
+        return self.core_api.list_secret_for_all_namespaces(label_selector=label_selector)
+
     def createOperatorAdminSecret(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> \
             Optional[client.V1Secret]:
         """Create the operator admin secret."""

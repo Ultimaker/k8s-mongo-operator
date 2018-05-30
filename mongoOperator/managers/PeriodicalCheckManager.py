@@ -110,16 +110,50 @@ class PeriodicalCheckManager(Manager):
                 self.kubernetes_service.getMongoObject(name, namespace)
             except ApiException as e:
                 if e.status == 404:
-                    # The service exists but the Mongo object is belonged to does not anymore, we have to delete it.
+                    # The service exists but the Mongo object is belonged to does not, we have to delete it.
                     self.kubernetes_service.deleteService(name, namespace)
                 else:
                     logging.exception(e)
 
     def _cleanStatefulSets(self):
-        pass
+        """Clean left-over stateful sets."""
+        try:
+            stateful_sets = self.kubernetes_service.listAllStatefulSetsWithLabels()
+        except ApiException as e:
+            logging.exception(e)
+            return
+
+        for stateful_set in stateful_sets:
+            name = stateful_set.metadata["name"]
+            namespace = stateful_set.metadata["namespace"]
+            try:
+                self.kubernetes_service.getMongoObject(name, namespace)
+            except ApiException as e:
+                if e .status == 404:
+                    # The stateful set exists but the Mongo object is belonged to does not, we have to delete it.
+                    self.kubernetes_service.deleteStatefulSet(name, namespace)
+                else:
+                    logging.exception(e)
 
     def _cleanSecrets(self):
-        pass
+        """Clean left-over secrets."""
+        try:
+            secrets = self.kubernetes_service.listAllSecretsWithLabels()
+        except ApiException as e:
+            logging.exception(e)
+            return
+
+        for secret in secrets:
+            name = secret.metadata["name"]
+            namespace = secret.metadata["namespace"]
+            try:
+                self.kubernetes_service.getMongoObject(name, namespace)
+            except ApiException as e:
+                if e.status == 404:
+                    # The secret exists but the Mongo object is belonged to does not, we have to delete it.
+                    self.kubernetes_service.deleteSecret(name, namespace)
+                else:
+                    logging.exception(e)
 
     def _isCachedResource(self, resource) -> bool:
         """
