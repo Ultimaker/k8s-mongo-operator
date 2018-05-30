@@ -21,16 +21,16 @@ class PeriodicalCheckManager(Manager):
     kubernetes_service = KubernetesService()
     mongo_service = MongoService()
     
-    def _execute(self):
+    def _execute(self) -> None:
         """Execute the manager logic."""
         self._checkExisting()
         self._collectGarbage()
         
-    def _beforeShuttingDown(self):
+    def _beforeShuttingDown(self) -> None:
         """Abstract method we don't need in this manager."""
         pass
 
-    def _checkExisting(self):
+    def _checkExisting(self) -> None:
         """
         Check all Mongo objects and see if the sub objects are available.
         If they are not, they should be (re-)created to ensure the cluster is in the expected state.
@@ -89,13 +89,13 @@ class PeriodicalCheckManager(Manager):
         # Finally we cache the latest known version of the object.
         self._cacheResource(stateful_set)
     
-    def _collectGarbage(self):
+    def _collectGarbage(self) -> None:
         """Collect garbage."""
         self._cleanServices()
         self._cleanStatefulSets()
         self._cleanSecrets()
 
-    def _cleanServices(self):
+    def _cleanServices(self) -> None:
         """Clean left-over services."""
         try:
             services = self.kubernetes_service.listAllServicesWithLabels()
@@ -115,7 +115,7 @@ class PeriodicalCheckManager(Manager):
                 else:
                     logging.exception(e)
 
-    def _cleanStatefulSets(self):
+    def _cleanStatefulSets(self) -> None:
         """Clean left-over stateful sets."""
         try:
             stateful_sets = self.kubernetes_service.listAllStatefulSetsWithLabels()
@@ -135,7 +135,7 @@ class PeriodicalCheckManager(Manager):
                 else:
                     logging.exception(e)
 
-    def _cleanSecrets(self):
+    def _cleanSecrets(self) -> None:
         """Clean left-over secrets."""
         try:
             secrets = self.kubernetes_service.listAllSecretsWithLabels()
