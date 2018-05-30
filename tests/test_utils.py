@@ -5,7 +5,7 @@ import yaml
 from kubernetes.client import V1ObjectMeta, V1beta1CustomResourceDefinition
 
 
-def getExampleClusterDefinition():
+def getExampleClusterDefinition() -> V1beta1CustomResourceDefinition:
     with open("./examples/mongo.yaml") as f:
         cluster_dict = yaml.load(f)
     cluster_dict["api_version"] = cluster_dict.pop("apiVersion")

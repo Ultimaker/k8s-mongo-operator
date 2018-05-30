@@ -8,7 +8,9 @@ from unittest import TestCase
 from unittest.mock import patch, call, MagicMock
 
 from kubernetes.client import V1beta1CustomResourceDefinitionList, Configuration, V1Secret, V1ObjectMeta, V1Service, \
-    V1ServiceSpec, V1ServicePort, V1DeleteOptions
+    V1ServiceSpec, V1ServicePort, V1DeleteOptions, V1beta1StatefulSet, V1beta1StatefulSetSpec, V1PodSpec, V1Container, \
+    V1EnvVar, V1EnvVarSource, V1ObjectFieldSelector, V1ContainerPort, V1VolumeMount, V1ResourceRequirements, \
+    V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec, V1PodTemplateSpec
 from kubernetes.client.rest import ApiException
 
 from mongoOperator.helpers.KubernetesResources import KubernetesResources
@@ -18,13 +20,48 @@ from tests.test_utils import getExampleClusterDefinition, dict_eq
 
 @patch("mongoOperator.services.KubernetesService.client")
 class TestKubernetesService(TestCase):
-    maxDiff = None
+    maxDiff = 10000
 
     def setUp(self):
         super().setUp()
         self.cluster_object = getExampleClusterDefinition()
         self.name = self.cluster_object.metadata.name
         self.namespace = self.cluster_object.metadata.namespace
+
+        self.stateful_set = V1beta1StatefulSet(
+            metadata=self._createMeta(self.name),
+            spec=V1beta1StatefulSetSpec(
+                replicas=3,
+                service_name=self.name,
+                template=V1PodTemplateSpec(
+                    metadata = V1ObjectMeta(labels=KubernetesResources.createDefaultLabels(self.name)),
+                    spec=V1PodSpec(containers=[V1Container(
+                        name="mongodb",
+                        env=[V1EnvVar(
+                            name="POD_IP",
+                            value_from=V1EnvVarSource(
+                                field_ref=V1ObjectFieldSelector(api_version = "v1", field_path = "status.podIP")
+                            )
+                        )],
+                        command=["mongod", "--replSet", self.name, "--bind_ip", "0.0.0.0", "--smallfiles", "--noprealloc"],
+                        image="mongo:3.6.4",
+                        ports=V1ContainerPort(name="mongodb", container_port=27017, protocol="TCP"),
+                        volume_mounts=[V1VolumeMount(name="mongo-storage", read_only=False, mount_path="/data/db")],
+                        resources=V1ResourceRequirements(
+                            limits={"cpu": "100m", "memory": "64Mi"},
+                            requests={"cpu": "100m", "memory": "64Mi"}
+                        )
+                    )])
+                ),
+                volume_claim_templates=[V1PersistentVolumeClaim(
+                    metadata=V1ObjectMeta(name="mongo-storage"),
+                    spec=V1PersistentVolumeClaimSpec(
+                        access_modes=["ReadWriteOnce"],
+                        resources=V1ResourceRequirements(requests={"storage": "30Gi"})
+                    )
+                )],
+            ),
+        )
 
     def _createMeta(self, name: str) -> V1ObjectMeta:
         return V1ObjectMeta(
@@ -306,61 +343,68 @@ class TestKubernetesService(TestCase):
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(V1Service(kind="unit"), result)
 
-    # TODO:
-    # def test_updateService(self, client_mock):
-    #     service = KubernetesService()
-    #     client_mock.reset_mock()
-    #
-    #     result = service.updateService(self.cluster_object)
-    #     expected_calls = []
-    #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual(client_mock, result)
+    def test_updateService(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
 
-    # TODO:
-    # def test_deleteService(self, client_mock):
-    #     service = KubernetesService()
-    #     client_mock.reset_mock()
-    #
-    #     result = service.deleteService(self.name, self.namespace)
-    #     expected_calls = []
-    #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual(client_mock, result)
+        expected_body = V1Service(
+            metadata=self._createMeta(self.name),
+            spec = V1ServiceSpec(
+                cluster_ip="None",
+                ports=[V1ServicePort(name='mongod', port=27017, protocol='TCP')],
+                selector={'heritage': 'mongo', 'name': self.name, 'operated-by': 'operators.ultimaker.com'},
+            )
+        )
+        result = service.updateService(self.cluster_object)
+        expected_calls = [call.CoreV1Api().patch_namespaced_service(self.name, self.namespace, expected_body)]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.CoreV1Api().patch_namespaced_service.return_value, result)
 
-    # TODO:
-    # def test_getStatefulSet(self, client_mock):
-    #     service = KubernetesService()
-    #     client_mock.reset_mock()
-    #
-    #     result = service.getStatefulSet(self.name, self.namespace)
-    #     expected_calls = []
-    #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual(client_mock, result)
+    def test_deleteService(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
 
-    # TODO:
-    # def test_createStatefulSet(self, client_mock):
-    #     service = KubernetesService()
-    #     client_mock.reset_mock()
-    #
-    #     result = service.createStatefulSet(self.cluster_object)
-    #     expected_calls = []
-    #    self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual(client_mock, result)
+        result = service.deleteService(self.name, self.namespace)
+        expected_calls = [call.CoreV1Api().delete_namespaced_service(self.name, self.namespace, V1DeleteOptions())]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.CoreV1Api().delete_namespaced_service.return_value, result)
 
-    # TODO:
-    # def test_updateStatefulSet(self, client_mock):
-    #     service = KubernetesService()
-    #     client_mock.reset_mock()
-    #
-    #     result = service.updateStatefulSet(self.cluster_object)
-    #     expected_calls = []
-    #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual(client_mock, result)
+    def test_getStatefulSet(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
 
-    # TODO:
-    # def test_deleteStatefulSet(self, client_mock):
-    #     service = KubernetesService()
-    #     client_mock.reset_mock()
-    #     result = service.deleteStatefulSet(self.name, self.namespace)
-    #     expected_calls = []
-    #     self.assertEqual(expected_calls, client_mock.mock_calls)
-    #     self.assertEqual(client_mock, result)
+        result = service.getStatefulSet(self.name, self.namespace)
+        expected_calls = [call.AppsV1beta1Api().read_namespaced_stateful_set(self.name, self.namespace)]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.AppsV1beta1Api().read_namespaced_stateful_set.return_value, result)
+
+    def test_createStatefulSet(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+
+        expected_calls = [call.AppsV1beta1Api().create_namespaced_stateful_set(self.namespace, self.stateful_set)]
+
+        result = service.createStatefulSet(self.cluster_object)
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.AppsV1beta1Api().create_namespaced_stateful_set.return_value, result)
+
+    def test_updateStatefulSet(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+
+        result = service.updateStatefulSet(self.cluster_object)
+        expected_calls = [
+            call.AppsV1beta1Api().patch_namespaced_stateful_set(self.name, self.namespace, self.stateful_set)
+        ]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.AppsV1beta1Api().patch_namespaced_stateful_set.return_value, result)
+
+    def test_deleteStatefulSet(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+        result = service.deleteStatefulSet(self.name, self.namespace)
+        expected_calls = [
+            call.AppsV1beta1Api().delete_namespaced_stateful_set(self.name, self.namespace, V1DeleteOptions())
+        ]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.AppsV1beta1Api().delete_namespaced_stateful_set.return_value, result)
