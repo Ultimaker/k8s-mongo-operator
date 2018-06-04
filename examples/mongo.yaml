@@ -2,7 +2,7 @@ apiVersion: "operators.ultimaker.com/v1"
 kind: Mongo
 metadata:
   name: some-db
-  namespace: mongo-ns
+  namespace: default
 spec:
   mongodb:
     replicas: 3  # Must be an odd number of minimum 3.
@@ -11,7 +11,8 @@ spec:
   backups:
     gcs:
       bucket: "mongo-backups"
-      serviceaccount:
+      service_account:
+        name: MONGO_SERVICE_ACCOUNT
         valueFrom:
           secretKeyRef:
             key: json

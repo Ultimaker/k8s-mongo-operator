@@ -7,6 +7,7 @@ from typing import Dict
 from kubernetes import client
 
 from mongoOperator.Settings import Settings
+from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 
 
 class KubernetesResources:
@@ -59,7 +60,7 @@ class KubernetesResources:
         }
 
     @classmethod
-    def createService(cls, cluster_object: client.V1beta1CustomResourceDefinition) -> client.V1Service:
+    def createService(cls, cluster_object: V1MongoClusterConfiguration) -> client.V1Service:
         """
         Creates a service model object.
         :param cluster_object: The cluster resource definition model.
@@ -87,7 +88,7 @@ class KubernetesResources:
         )
 
     @classmethod
-    def createStatefulSet(cls, cluster_object: client.V1beta1CustomResourceDefinition) -> client.V1beta1StatefulSet:
+    def createStatefulSet(cls, cluster_object: V1MongoClusterConfiguration) -> client.V1beta1StatefulSet:
         
         # Parse cluster data object.
         name = cluster_object.metadata.name

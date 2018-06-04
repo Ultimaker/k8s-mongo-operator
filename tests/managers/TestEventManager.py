@@ -8,6 +8,7 @@ from unittest.mock import patch, call
 from kubernetes.client.rest import ApiException
 
 from mongoOperator.managers.EventManager import EventManager
+from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from tests.test_utils import getExampleClusterDefinition
 
 
@@ -17,7 +18,8 @@ class TestEventManager(TestCase):
     def setUp(self):
         self.shutdown_event = threading.Event()
         self.manager = EventManager(self.shutdown_event, sleep_seconds=0.01)
-        self.cluster_example = getExampleClusterDefinition()
+        self.cluster_dict = getExampleClusterDefinition()
+        self.cluster_example = V1MongoClusterConfiguration(**self.cluster_dict)
 
     @patch("mongoOperator.managers.EventManager.EventManager.event_watcher")
     def test_run(self, watcher_mock):
@@ -33,13 +35,13 @@ class TestEventManager(TestCase):
     @patch("kubernetes.watch.watch.Watch.stream")
     def test__execute(self, stream_mock, svc_mock):
         stream_mock.return_value = [
-            {"type": "ADDED", "object": self.cluster_example},
-            {"type": "MODIFIED", "object": self.cluster_example},
-            {"type": "DELETED", "object": self.cluster_example}
+            {"type": "ADDED", "object": self.cluster_dict},
+            {"type": "MODIFIED", "object": self.cluster_dict},
+            {"type": "DELETED", "object": self.cluster_dict}
         ]
         self.manager.execute()
-        name = self.cluster_example.metadata.name
-        namespace = self.cluster_example.metadata.namespace
+        name = self.cluster_dict["metadata"]["name"]
+        namespace = self.cluster_dict["metadata"]["namespace"]
         expected_calls = [
             call.createOperatorAdminSecret(self.cluster_example),
             call.createService(self.cluster_example),
@@ -56,7 +58,7 @@ class TestEventManager(TestCase):
     def test__processEvent_add(self, mock_add_handler):
         self.manager._processEvent({
             "type": "ADDED",
-            "object": self.cluster_example,
+            "object": self.cluster_dict,
         })
         mock_add_handler.assert_called_once_with(self.cluster_example)
 
@@ -64,7 +66,7 @@ class TestEventManager(TestCase):
     def test__processEvent_update(self, mock_update_handler):
         self.manager._processEvent({
             "type": "MODIFIED",
-            "object": self.cluster_example,
+            "object": self.cluster_dict,
         })
         mock_update_handler.assert_called_once_with(self.cluster_example)
 
@@ -72,7 +74,7 @@ class TestEventManager(TestCase):
     def test__processEvent_delete(self, mock_delete_handler):
         self.manager._processEvent({
             "type": "DELETED",
-            "object": self.cluster_example,
+            "object": self.cluster_dict,
         })
         mock_delete_handler.assert_called_once_with(self.cluster_example)
 
@@ -80,7 +82,7 @@ class TestEventManager(TestCase):
     def test__processEvent_unknown(self, service_mock):
         self.manager._processEvent({
             "type": "UNKNOWN",
-            "object": self.cluster_example,
+            "object": self.cluster_dict,
         })
         self.assertEquals([], service_mock.mock_calls)
 
@@ -93,4 +95,4 @@ class TestEventManager(TestCase):
     def test__processEvent_api_exception(self, svc_mock):
         svc_mock.createOperatorAdminSecret.side_effect = ApiException
         with self.assertRaises(ApiException):
-            self.manager._processEvent({"type": "ADDED", "object": self.cluster_example})
+            self.manager._processEvent({"type": "ADDED", "object": self.cluster_dict})

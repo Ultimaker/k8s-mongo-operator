@@ -7,13 +7,14 @@
 from unittest import TestCase
 from unittest.mock import patch, call, MagicMock
 
-from kubernetes.client import V1beta1CustomResourceDefinitionList, Configuration, V1Secret, V1ObjectMeta, V1Service, \
+from kubernetes.client import Configuration, V1Secret, V1ObjectMeta, V1Service, \
     V1ServiceSpec, V1ServicePort, V1DeleteOptions, V1beta1StatefulSet, V1beta1StatefulSetSpec, V1PodSpec, V1Container, \
     V1EnvVar, V1EnvVarSource, V1ObjectFieldSelector, V1ContainerPort, V1VolumeMount, V1ResourceRequirements, \
-    V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec, V1PodTemplateSpec
+    V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec, V1PodTemplateSpec, V1beta1CustomResourceDefinitionList
 from kubernetes.client.rest import ApiException
 
 from mongoOperator.helpers.KubernetesResources import KubernetesResources
+from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 from tests.test_utils import getExampleClusterDefinition, dict_eq
 
@@ -24,7 +25,8 @@ class TestKubernetesService(TestCase):
 
     def setUp(self):
         super().setUp()
-        self.cluster_object = getExampleClusterDefinition()
+        self.cluster_dict = getExampleClusterDefinition()
+        self.cluster_object = V1MongoClusterConfiguration(**self.cluster_dict)
         self.name = self.cluster_object.metadata.name
         self.namespace = self.cluster_object.metadata.namespace
 
@@ -274,12 +276,9 @@ class TestKubernetesService(TestCase):
         result = service.createSecret(self.name, self.namespace, secret_data)
 
         expected_body = V1Secret(metadata = self._createMeta(self.name), string_data=secret_data)
-        expected_calls = [
-            call.CoreV1Api().create_namespaced_secret(self.namespace, expected_body),
-            call.CoreV1Api().read_namespaced_secret(self.name, self.namespace)
-        ]
+        expected_calls = [call.CoreV1Api().create_namespaced_secret(self.namespace, expected_body)]
         self.assertEqual(expected_calls, client_mock.mock_calls)
-        self.assertEqual(client_mock.CoreV1Api.return_value.read_namespaced_secret.return_value, result)
+        self.assertIsNone(result)
 
     def test_createSecret_error(self, client_mock):
         service = KubernetesService()

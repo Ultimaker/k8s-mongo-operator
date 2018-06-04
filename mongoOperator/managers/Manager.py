@@ -30,7 +30,7 @@ class Manager(ABC):
                 logging.debug("Executing manager {}...".format(self.__class__.__name__))
                 self.execute()
             except Exception as exception:
-                logging.exception("An exception occurred in a manager: %s", exception)
+                logging.exception("An exception occurred in manager %s: %s", type(self), exception)
             finally:
                 sleep(self._sleep_seconds)
         else:

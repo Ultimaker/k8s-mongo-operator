@@ -11,3 +11,5 @@ Jenkinsfile
 .build.sh
 README.md
 *.pyc
+docs/
+htmlcov/

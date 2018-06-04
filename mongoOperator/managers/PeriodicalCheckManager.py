@@ -41,7 +41,7 @@ class PeriodicalCheckManager(Manager):
             self._checkStatefulSet(cluster_object)
             self.mongo_service.checkReplicaSetNeedsSetup(cluster_object)
 
-    def _checkService(self, cluster_object: "client.V1beta1CustomResourceDefinition") -> None:
+    def _checkService(self, cluster_object: "client.V1MongoClusterConfiguration") -> None:
         """Check and ensure the service is running."""
         name = cluster_object.metadata["name"]
         namespace = cluster_object.metadata["namespace"]

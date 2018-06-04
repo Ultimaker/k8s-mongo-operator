@@ -13,11 +13,12 @@ RUN pip install -r requirements-testing.txt
 ARG cache=1
 ARG KUBERNETES_SERVICE_HOST="localhost"
 ARG KUBERNETES_SERVICE_PORT=8081
+RUN mkdir -p /var/run/secrets/kubernetes.io/serviceaccount
 RUN echo "unit-test" >> /var/run/secrets/kubernetes.io/serviceaccount/token
 RUN echo "unit-test" >> /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 ADD . .
 RUN ENV_NAME=testing ASYNC_TEST_TIMEOUT=15 coverage run --source="mongoOperator" -m pytest
-RUN coverage report --skip-covered --show-missing  --fail-under=76
+RUN coverage report --skip-covered --show-missing  --fail-under=75
 
 # This is the container build statements that will create the container meant for deployment
 FROM base AS build
