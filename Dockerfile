@@ -13,6 +13,7 @@ RUN pip install -r requirements-testing.txt
 ARG cache=1
 ARG KUBERNETES_SERVICE_HOST="localhost"
 ARG KUBERNETES_SERVICE_PORT=8081
+RUN mkdir -p /var/run/secrets/kubernetes.io/serviceaccount
 RUN echo "unit-test" >> /var/run/secrets/kubernetes.io/serviceaccount/token
 RUN echo "unit-test" >> /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 ADD . .
