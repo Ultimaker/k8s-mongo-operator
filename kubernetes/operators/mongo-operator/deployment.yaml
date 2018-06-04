@@ -23,3 +23,4 @@ spec:
       - image: ultimaker/mongo-operator:local
         imagePullPolicy: Never
         name: mongo-operator
+      serviceAccount: mongo-operator-service-account

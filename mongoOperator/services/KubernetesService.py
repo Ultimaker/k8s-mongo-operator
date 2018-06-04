@@ -5,6 +5,7 @@ import logging
 from typing import Dict, Optional, List
 
 import yaml
+from kubernetes.config import load_incluster_config
 from kubernetes import client
 from kubernetes.client import Configuration, V1DeleteOptions
 from kubernetes.client.rest import ApiException
@@ -23,26 +24,25 @@ class KubernetesService:
 
     def __init__(self):
         # Create Kubernetes config.
-        kubernetes_config = Configuration()
-        kubernetes_config.host = Settings.KUBERNETES_SERVICE_HOST
-        kubernetes_config.verify_ssl = not Settings.KUBERNETES_SERVICE_SKIP_TLS
-        kubernetes_config.debug = Settings.KUBERNETES_SERVICE_DEBUG
-        self.api_client = client.ApiClient(configuration=kubernetes_config)
+        load_incluster_config()
+        config = Configuration()
+        config.debug = Settings.KUBERNETES_SERVICE_DEBUG
+        self.api_client = client.ApiClient(config)
 
         # Re-usable API client instances.
-        self.custom_objects_api = client.CustomObjectsApi(self.api_client)
         self.core_api = client.CoreV1Api(self.api_client)
+        self.custom_objects_api = client.CustomObjectsApi(self.api_client)
         self.extensions_api = client.ApiextensionsV1beta1Api(self.api_client)
         self.apps_api = client.AppsV1beta1Api(self.api_client)
 
     def createMongoObjectDefinition(self) -> None:
         """Create the custom resource definition."""
-        available_crds = {crd.spec.names.kind.lower() for crd in
+        available_crds = {crd.spec.names.plural for crd in
                           self.extensions_api.list_custom_resource_definition().items}
-        if Settings.CUSTOM_OBJECT_RESOURCE_NAME not in available_crds:
+        if Settings.CUSTOM_OBJECT_RESOURCE_PLURAL not in available_crds:
             # Create it if our CRD doesn't exists yet.
-            logging.info("Custom resource definition {} not found in cluster, creating it...".format(
-                    Settings.CUSTOM_OBJECT_RESOURCE_NAME))
+            logging.info("Custom resource definition %s not found in cluster (available: %s), creating it...",
+                    Settings.CUSTOM_OBJECT_RESOURCE_PLURAL, available_crds)
             with open("mongo_crd.yaml") as f:
                 body = yaml.load(f)
             self.extensions_api.create_custom_resource_definition(body)
@@ -54,9 +54,9 @@ class KubernetesService:
         :return: List of custom resource objects.
         """
         self.createMongoObjectDefinition()
-        return self.custom_objects_api.list_cluster_custom_object(Settings.CUSTOM_OBJECT_API_NAMESPACE,
+        return self.custom_objects_api.list_cluster_custom_object(Settings.CUSTOM_OBJECT_API_GROUP,
                                                                   Settings.CUSTOM_OBJECT_API_VERSION,
-                                                                  Settings.CUSTOM_OBJECT_RESOURCE_NAME,
+                                                                  Settings.CUSTOM_OBJECT_RESOURCE_PLURAL,
                                                                   **kwargs)
 
     def getMongoObject(self, name: str, namespace: str) -> Optional[client.V1beta1CustomResourceDefinition]:
@@ -66,10 +66,10 @@ class KubernetesService:
         :param namespace: The namespace in which to get the object.
         :return: The custom resource object if existing, otherwise None
         """
-        return self.custom_objects_api.get_namespaced_custom_object(Settings.CUSTOM_OBJECT_API_NAMESPACE,
+        return self.custom_objects_api.get_namespaced_custom_object(Settings.CUSTOM_OBJECT_API_GROUP,
                                                                     Settings.CUSTOM_OBJECT_API_VERSION,
                                                                     namespace,
-                                                                    Settings.CUSTOM_OBJECT_RESOURCE_NAME,
+                                                                    Settings.CUSTOM_OBJECT_RESOURCE_PLURAL,
                                                                     name)
 
     def listAllServicesWithLabels(self, label_selector: Dict[str, str] = KubernetesResources.createDefaultLabels())\

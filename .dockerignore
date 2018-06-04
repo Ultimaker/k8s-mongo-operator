@@ -10,3 +10,4 @@ Jenkinsfile
 .coverage
 .build.sh
 README.md
+*.pyc

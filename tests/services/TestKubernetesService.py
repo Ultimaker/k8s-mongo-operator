@@ -71,19 +71,17 @@ class TestKubernetesService(TestCase):
         )
 
     def test___init__(self, client_mock):
-        kubernetes_config = Configuration()
-        kubernetes_config.host = "http://localhost"
-        kubernetes_config.verify_ssl = False
-        kubernetes_config.debug = False
+        KubernetesService()
+        config = Configuration()
+        config.debug = False
         expected = [
-            call.ApiClient(configuration=kubernetes_config),
-            call.CustomObjectsApi(client_mock.ApiClient.return_value),
+            call.ApiClient(config),
             call.CoreV1Api(client_mock.ApiClient.return_value),
+            call.CustomObjectsApi(client_mock.ApiClient.return_value),
             call.ApiextensionsV1beta1Api(client_mock.ApiClient.return_value),
             call.AppsV1beta1Api(client_mock.ApiClient.return_value),
         ]
 
-        KubernetesService()
         with patch("kubernetes.client.configuration.Configuration.__eq__", dict_eq):
             self.assertEqual(expected, client_mock.mock_calls)
 
@@ -96,7 +94,7 @@ class TestKubernetesService(TestCase):
         expected_def = {
             "apiVersion": "apiextensions.k8s.io/v1beta1",
             "kind": "CustomResourceDefinition",
-            "metadata": {"name": "mongo.operators.ultimaker.com"},
+            "metadata": {"name": "mongos.operators.ultimaker.com"},
             "spec": {
                 "group": "operators.ultimaker.com", "version": "v1", "scope": "Namespaced",
                 "names": {
@@ -120,7 +118,7 @@ class TestKubernetesService(TestCase):
         client_mock.reset_mock()
 
         item = MagicMock()
-        item.spec.names.kind = "mongo"
+        item.spec.names.plural = "mongos"
         client_mock.ApiextensionsV1beta1Api.return_value.list_custom_resource_definition.return_value.items = [item]
 
         self.assertIsNone(service.createMongoObjectDefinition())
@@ -132,13 +130,13 @@ class TestKubernetesService(TestCase):
         client_mock.reset_mock()
 
         item = MagicMock()
-        item.spec.names.kind = "mongo"
+        item.spec.names.plural = "mongos"
         client_mock.ApiextensionsV1beta1Api.return_value.list_custom_resource_definition.return_value.items = [item]
 
         result = service.listMongoObjects(param="value")
         expected_calls = [
             call.ApiextensionsV1beta1Api().list_custom_resource_definition(),
-            call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongo", param='value')
+            call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongos", param='value')
         ]
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.CustomObjectsApi().list_cluster_custom_object.return_value, result)
@@ -149,7 +147,7 @@ class TestKubernetesService(TestCase):
 
         result = service.getMongoObject(self.name, self.namespace)
         expected_calls = [call.CustomObjectsApi().get_namespaced_custom_object(
-            'operators.ultimaker.com', 'v1', self.namespace, 'mongo', self.name
+            'operators.ultimaker.com', 'v1', self.namespace, 'mongos', self.name
         )]
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.CustomObjectsApi().get_namespaced_custom_object.return_value, result)
@@ -334,7 +332,7 @@ class TestKubernetesService(TestCase):
             spec = V1ServiceSpec(
                 cluster_ip="None",
                 ports=[V1ServicePort(name='mongod', port=27017, protocol='TCP')],
-                selector={'heritage': 'mongo', 'name': self.name, 'operated-by': 'operators.ultimaker.com'},
+                selector={'heritage': 'mongos', 'name': self.name, 'operated-by': 'operators.ultimaker.com'},
             )
         )
         expected_calls = [call.CoreV1Api().create_namespaced_service(self.namespace, expected_body)]
@@ -352,7 +350,7 @@ class TestKubernetesService(TestCase):
             spec = V1ServiceSpec(
                 cluster_ip="None",
                 ports=[V1ServicePort(name='mongod', port=27017, protocol='TCP')],
-                selector={'heritage': 'mongo', 'name': self.name, 'operated-by': 'operators.ultimaker.com'},
+                selector={'heritage': 'mongos', 'name': self.name, 'operated-by': 'operators.ultimaker.com'},
             )
         )
         result = service.updateService(self.cluster_object)
