@@ -53,8 +53,8 @@ class KubernetesResources:
         :return: The object's metadata dictionary.
         """
         return {
-            "operated-by": Settings.CUSTOM_OBJECT_API_NAMESPACE,
-            "heritage": Settings.CUSTOM_OBJECT_RESOURCE_NAME,
+            "operated-by": Settings.CUSTOM_OBJECT_API_GROUP,
+            "heritage": Settings.CUSTOM_OBJECT_RESOURCE_PLURAL,
             "name": name if name else ""
         }
 
