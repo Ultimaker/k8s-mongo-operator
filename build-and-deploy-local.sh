@@ -21,7 +21,10 @@ kubectl describe deploy mongo-operator
 
 # wait for the pod to startup to retrieve its name
 sleep 10
-POD_NAME=$(kubectl get pods | grep mongo-operator | grep Running | cut --fields=1 --delimiter=" ")
+POD_NAME=$(kubectl get pods | grep -e "mongo-operator.*Running" | cut --fields=1 --delimiter=" ")
 
-# follow the pod logs
-kubectl logs ${POD_NAME} --follow
+# apply the example file
+kubectl apply --filename=examples/mongo.yaml
+
+# show the pod logs
+kubectl logs ${POD_NAME}

@@ -4,11 +4,11 @@
 import logging
 from enum import Enum
 
-from kubernetes.client import V1beta1CustomResourceDefinition
 from kubernetes.client.rest import ApiException
 from kubernetes.watch import Watch
 
 from mongoOperator.managers.Manager import Manager
+from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 
 
@@ -62,12 +62,14 @@ class EventManager(Manager):
         
         # Call the needed handler method.
         try:
-            event_type_to_action_map[event["type"]](event["object"])
+            cluster_object = V1MongoClusterConfiguration(**event["object"])
+            print(cluster_object)
+            event_type_to_action_map[event["type"]](cluster_object)
         except ApiException as error:
             logging.exception("API error with %s object %s: %s", event["type"], event["object"], error)
             raise
 
-    def _add(self, cluster_object: V1beta1CustomResourceDefinition) -> None:
+    def _add(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """
         Handler method for adding a new managed Mongo replica set.
         """
@@ -75,7 +77,7 @@ class EventManager(Manager):
         self.kubernetes_service.createService(cluster_object)
         self.kubernetes_service.createStatefulSet(cluster_object)
 
-    def _update(self, cluster_object: V1beta1CustomResourceDefinition) -> None:
+    def _update(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """
         Handler method for updating a managed Mongo replica set.
         """
@@ -83,7 +85,7 @@ class EventManager(Manager):
         self.kubernetes_service.updateService(cluster_object)
         self.kubernetes_service.updateStatefulSet(cluster_object)
 
-    def _delete(self, cluster_object: V1beta1CustomResourceDefinition) -> None:
+    def _delete(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """
         Handler method for deleting a managed Mongo replica set.
         """
