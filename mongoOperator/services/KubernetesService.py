@@ -10,9 +10,8 @@ import yaml
 from kubernetes.config import load_incluster_config
 from kubernetes import client
 from kubernetes.client import Configuration, V1DeleteOptions
-from kubernetes.client.rest import ApiException
 
-from mongoOperator.Settings import Settings
+from Settings import Settings
 from mongoOperator.helpers.IgnoreIfExists import IgnoreIfExists
 from mongoOperator.helpers.KubernetesResources import KubernetesResources
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration

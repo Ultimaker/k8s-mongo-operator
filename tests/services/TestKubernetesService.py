@@ -47,7 +47,7 @@ class TestKubernetesService(TestCase):
                         )],
                         command=["mongod", "--replSet", self.name, "--bind_ip", "0.0.0.0", "--smallfiles", "--noprealloc"],
                         image="mongo:3.6.4",
-                        ports=V1ContainerPort(name="mongodb", container_port=27017, protocol="TCP"),
+                        ports=[V1ContainerPort(name="mongodb", container_port=27017, protocol="TCP")],
                         volume_mounts=[V1VolumeMount(name="mongo-storage", read_only=False, mount_path="/data/db")],
                         resources=V1ResourceRequirements(
                             limits={"cpu": "100m", "memory": "64Mi"},
