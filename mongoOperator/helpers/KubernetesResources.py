@@ -6,7 +6,7 @@ from typing import Dict
 
 from kubernetes import client
 
-from mongoOperator.Settings import Settings
+from Settings import Settings
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 
 
