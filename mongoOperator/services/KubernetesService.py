@@ -2,14 +2,14 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
-from contextlib import suppress
 
-from typing import Dict, Optional, List
+from kubernetes.stream import stream
+from typing import Dict, Optional
 
 import yaml
 from kubernetes.config import load_incluster_config
 from kubernetes import client
-from kubernetes.client import Configuration, V1DeleteOptions
+from kubernetes.client import Configuration, V1DeleteOptions, V1ServiceList, V1StatefulSetList, V1SecretList
 
 from Settings import Settings
 from mongoOperator.helpers.IgnoreIfExists import IgnoreIfExists
@@ -40,22 +40,23 @@ class KubernetesService:
 
     def createMongoObjectDefinition(self) -> None:
         """Create the custom resource definition."""
-        available_crds = {crd.spec.names.plural for crd in
-                          self.extensions_api.list_custom_resource_definition().items}
-        if Settings.CUSTOM_OBJECT_RESOURCE_PLURAL not in available_crds:
+        available_resources = {crd.spec.names.plural for crd in
+                               self.extensions_api.list_custom_resource_definition().items}
+        if Settings.CUSTOM_OBJECT_RESOURCE_PLURAL not in available_resources:
             # Create it if our CRD doesn't exists yet.
             logging.info("Custom resource definition %s not found in cluster (available: %s), creating it...",
-                         Settings.CUSTOM_OBJECT_RESOURCE_PLURAL, available_crds)
+                         Settings.CUSTOM_OBJECT_RESOURCE_PLURAL, available_resources)
             with open("mongo_crd.yaml") as f:
-                body = yaml.load(f)
+                definition_dict = yaml.load(f)
+            body = KubernetesResources.deserialize(definition_dict, "V1beta1CustomResourceDefinition")
             self.extensions_api.create_custom_resource_definition(body)
 
-    def listMongoObjects(self, **kwargs) -> List[V1MongoClusterConfiguration]:
+    def listMongoObjects(self, **kwargs) -> Dict[str, any]:
         """
         Get all Kubernetes objects of our custom resource type.
         IMPORTANT: Kubernetes uses the :return: value to deserialize the results, so it must be a class name.
         :param kwargs: Additional API flags.
-        :return: object
+        :return: dict(str, object)
         """
         self.createMongoObjectDefinition()
         return self.custom_objects_api.list_cluster_custom_object(Settings.CUSTOM_OBJECT_API_GROUP,
@@ -76,19 +77,25 @@ class KubernetesService:
                                                                     Settings.CUSTOM_OBJECT_RESOURCE_PLURAL,
                                                                     name)
 
-    def listAllServicesWithLabels(self, label_selector: Dict[str, str] = KubernetesResources.createDefaultLabels())\
-            -> List[client.V1Service]:
+    def listAllServicesWithLabels(self, labels: Dict[str, str] = KubernetesResources.createDefaultLabels())\
+            -> V1ServiceList:
         """Get all services with the given labels."""
+        label_selector = KubernetesResources.createLabelSelector(labels)
+        logging.info("Getting all services with labels %s", label_selector)
         return self.core_api.list_service_for_all_namespaces(label_selector=label_selector)
 
-    def listAllStatefulSetsWithLabels(self, label_selector: Dict[str, str] = KubernetesResources.createDefaultLabels())\
-            -> List[client.V1StatefulSet]:
+    def listAllStatefulSetsWithLabels(self, labels: Dict[str, str] = KubernetesResources.createDefaultLabels())\
+            -> V1StatefulSetList:
         """Get all stateful sets with the given labels."""
+        label_selector = KubernetesResources.createLabelSelector(labels)
+        logging.info("Getting all stateful sets with labels %s", label_selector)
         return self.apps_api.list_stateful_set_for_all_namespaces(label_selector=label_selector)
 
-    def listAllSecretsWithLabels(self, label_selector: Dict[str, str] = KubernetesResources.createDefaultLabels())\
-            -> List[client.V1Secret]:
+    def listAllSecretsWithLabels(self, labels: Dict[str, str] = KubernetesResources.createDefaultLabels())\
+            -> V1SecretList:
         """Get al secrets with the given labels."""
+        label_selector = KubernetesResources.createLabelSelector(labels)
+        logging.info("Getting all secrets with labels %s", label_selector)
         return self.core_api.list_secret_for_all_namespaces(label_selector=label_selector)
 
     def createOperatorAdminSecret(self, cluster_object: V1MongoClusterConfiguration) -> \
@@ -97,6 +104,15 @@ class KubernetesService:
         secret_data = {"username": "root", "password": KubernetesResources.createRandomPassword()}
         return self.createSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
                                  cluster_object.metadata.namespace, secret_data)
+
+    def getOperatorAdminSecret(self, cluster_name: str, namespace: str) -> Optional[client.V1Secret]:
+        """
+        Retrieves the operator admin secret.
+        :param cluster_name: Name of the cluster.
+        :param namespace: Namespace in which to delete the secret.
+        :return: The deletion status.
+        """
+        return self.getSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_name), namespace)
 
     def deleteOperatorAdminSecret(self, cluster_name: str, namespace: str) -> client.V1Status:
         """
@@ -233,3 +249,15 @@ class KubernetesService:
         """
         body = V1DeleteOptions()
         return self.apps_api.delete_namespaced_stateful_set(name, namespace, body)
+
+    def execInPod(self, container, pod_name, namespace, exec_cmd) -> str:
+        """
+        Executes a command in the pod with the given name.
+        :param container: The container name.
+        :param pod_name: The pod name.
+        :param namespace: The pod namespace.
+        :param exec_cmd: The command to execute.
+        :return: The command output.
+        """
+        return stream(self.core_api.connect_get_namespaced_pod_exec, pod_name, namespace, command=exec_cmd,
+                      container=container, stderr=True, stdin=False, stdout=True, tty=False)

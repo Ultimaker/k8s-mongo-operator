@@ -2,7 +2,7 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
-from abc import ABC
+from abc import ABC, abstractmethod
 
 import threading
 from time import sleep
@@ -20,6 +20,7 @@ class Manager(ABC):
         """
         self._shutting_down_event = shutting_down_event
         self._sleep_seconds = sleep_seconds
+        self.name = self.__class__.__name__
     
     def run(self) -> None:
         """
@@ -27,16 +28,17 @@ class Manager(ABC):
         """
         while not self._shutting_down_event.isSet():
             try:
-                logging.debug("Executing manager {}...".format(self.__class__.__name__))
+                logging.debug("Executing manager {}...".format(self.name))
                 self.execute()
             except Exception as exception:
-                logging.exception("An exception occurred in manager %s: %s", type(self), exception)
+                logging.exception("An exception occurred in manager %s: %s", self.name, exception)
             finally:
                 sleep(self._sleep_seconds)
         else:
             logging.info("Thread shutting down...")
             self.beforeShuttingDown()
 
+    @abstractmethod
     def execute(self) -> None:
         """ Runs the manager once. Must be implemented in subclasses. """
 

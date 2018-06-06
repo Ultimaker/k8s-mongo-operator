@@ -1,12 +1,16 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
+import json
 import logging
 
-from kubernetes import client
+from kubernetes.client import V1Service, V1Secret, V1beta1StatefulSet
+from typing import Union
+
 from kubernetes.client.rest import ApiException
 
 from mongoOperator.managers.Manager import Manager
+from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 from mongoOperator.services.MongoService import MongoService
 
@@ -19,16 +23,12 @@ class PeriodicalCheckManager(Manager):
     CACHED_RESOURCES = {}
 
     kubernetes_service = KubernetesService()
-    mongo_service = MongoService()
-    
-    def _execute(self) -> None:
+    mongo_service = MongoService(kubernetes_service)
+
+    def execute(self) -> None:
         """Execute the manager logic."""
         self._checkExisting()
         self._collectGarbage()
-        
-    def _beforeShuttingDown(self) -> None:
-        """Abstract method we don't need in this manager."""
-        pass
 
     def _checkExisting(self) -> None:
         """
@@ -36,58 +36,72 @@ class PeriodicalCheckManager(Manager):
         If they are not, they should be (re-)created to ensure the cluster is in the expected state.
         """
         mongo_objects = self.kubernetes_service.listMongoObjects()
-        for cluster_object in mongo_objects:
+        logging.debug("Found %s mongo objects.", len(mongo_objects["items"]))
+        for cluster_dict in mongo_objects["items"]:
+            cluster_object = V1MongoClusterConfiguration(**cluster_dict)
             self._checkService(cluster_object)
             self._checkStatefulSet(cluster_object)
+            self._checkOperatorAdminSecrets(cluster_object)
             self.mongo_service.checkReplicaSetNeedsSetup(cluster_object)
 
-    def _checkService(self, cluster_object: "client.V1MongoClusterConfiguration") -> None:
+    def _checkService(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """Check and ensure the service is running."""
-        name = cluster_object.metadata["name"]
-        namespace = cluster_object.metadata["namespace"]
+        name = cluster_object.metadata.name
+        namespace = cluster_object.metadata.namespace
         try:
             service = self.kubernetes_service.getService(name, namespace)
         except ApiException as e:
-            if e.status == 404:
-                # The service does not exist but should, so we create it.
-                service = self.kubernetes_service.createService(cluster_object)
-                if service:
-                    # We just created it, so we can cache it right away.
-                    self._cacheResource(service)
-            else:
-                logging.exception(e)
-                return
+            service = None
+            if e.status != 404:
+                raise
 
-        if not self._isCachedResource(service):
+        if not service:
+            # The service does not exist but should, so we create it.
+            service = self.kubernetes_service.createService(cluster_object)
+        elif not self._isCachedResource(service):
             # If it's not cached, we update the service to ensure it is up to date.
             service = self.kubernetes_service.updateService(cluster_object)
 
         # Finally we cache the latest known version of the object.
         self._cacheResource(service)
+        logging.info("Status of service %s @ %s is %s", name, namespace, service.status)
 
-    def _checkStatefulSet(self, cluster_object) -> None:
+    def _checkOperatorAdminSecrets(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """Check and ensure the stateful set is running."""
-        name = cluster_object.metadata["name"]
-        namespace = cluster_object.metadata["namespace"]
+        name = cluster_object.metadata.name
+        namespace = cluster_object.metadata.namespace
+        try:
+            secret = self.kubernetes_service.getOperatorAdminSecret(name, namespace)
+        except ApiException as e:
+            if e.status == 404:
+                # The secret does not exist but it should, so we create it.
+                secret = self.kubernetes_service.createOperatorAdminSecret(cluster_object)
+            else:
+                raise
+
+        logging.info("Operator Admin Secret for %s @ %s has keys %s", name, namespace, sorted(secret.data.keys()))
+
+    def _checkStatefulSet(self, cluster_object: V1MongoClusterConfiguration) -> None:
+        """Check and ensure the stateful set is running."""
+        name = cluster_object.metadata.name
+        namespace = cluster_object.metadata.namespace
         try:
             stateful_set = self.kubernetes_service.getStatefulSet(name, namespace)
         except ApiException as e:
-            if e.status == 404:
-                # The stateful set does not exist but it should, so we create it.
-                stateful_set = self.kubernetes_service.createStatefulSet(cluster_object)
-                if stateful_set:
-                    # We just created it, so we can cache it right away.
-                    self._cacheResource(stateful_set)
-            else:
-                logging.exception(e)
-                return
+            stateful_set = None
+            if e.status != 404:
+                raise
 
-        if not self._isCachedResource(stateful_set):
+        if not stateful_set:
+            stateful_set = self.kubernetes_service.createStatefulSet(cluster_object)
+        elif not self._isCachedResource(stateful_set):
             # If it's not cached, we update the stateful set to ensure it is up to date.
             stateful_set = self.kubernetes_service.updateStatefulSet(cluster_object)
 
         # Finally we cache the latest known version of the object.
         self._cacheResource(stateful_set)
+        logging.info("Status of stateful set of service %s @ %s is %s with %s replicas", name, namespace,
+                     stateful_set.status, stateful_set.spec.replicas)
     
     def _collectGarbage(self) -> None:
         """Collect garbage."""
@@ -97,65 +111,50 @@ class PeriodicalCheckManager(Manager):
 
     def _cleanServices(self) -> None:
         """Clean left-over services."""
-        try:
-            services = self.kubernetes_service.listAllServicesWithLabels()
-        except ApiException as e:
-            logging.exception(e)
-            return
+        services = self.kubernetes_service.listAllServicesWithLabels()
 
-        for service in services:
-            name = service.metadata["name"]
-            namespace = service.metadata["namespace"]
+        for service in services.items:
+            name = service.metadata.name
+            namespace = service.metadata.namespace
             try:
                 self.kubernetes_service.getMongoObject(name, namespace)
             except ApiException as e:
-                if e.status == 404:
-                    # The service exists but the Mongo object is belonged to does not, we have to delete it.
-                    self.kubernetes_service.deleteService(name, namespace)
-                else:
-                    logging.exception(e)
+                if e.status != 404:
+                    raise
+                # The service exists but the Mongo object it belonged to does not, we have to delete it.
+                self.kubernetes_service.deleteService(name, namespace)
 
     def _cleanStatefulSets(self) -> None:
         """Clean left-over stateful sets."""
-        try:
-            stateful_sets = self.kubernetes_service.listAllStatefulSetsWithLabels()
-        except ApiException as e:
-            logging.exception(e)
-            return
+        stateful_sets = self.kubernetes_service.listAllStatefulSetsWithLabels()
 
-        for stateful_set in stateful_sets:
-            name = stateful_set.metadata["name"]
-            namespace = stateful_set.metadata["namespace"]
+        for stateful_set in stateful_sets.items:
+            name = stateful_set.metadata.name
+            namespace = stateful_set.metadata.namespace
             try:
                 self.kubernetes_service.getMongoObject(name, namespace)
             except ApiException as e:
-                if e .status == 404:
-                    # The stateful set exists but the Mongo object is belonged to does not, we have to delete it.
-                    self.kubernetes_service.deleteStatefulSet(name, namespace)
-                else:
-                    logging.exception(e)
+                if e .status != 404:
+                    raise
+                # The stateful set exists but the Mongo object is belonged to does not, we have to delete it.
+                self.kubernetes_service.deleteStatefulSet(name, namespace)
 
     def _cleanSecrets(self) -> None:
         """Clean left-over secrets."""
-        try:
-            secrets = self.kubernetes_service.listAllSecretsWithLabels()
-        except ApiException as e:
-            logging.exception(e)
-            return
+        secrets = self.kubernetes_service.listAllSecretsWithLabels()
 
-        for secret in secrets:
-            name = secret.metadata["name"]
-            namespace = secret.metadata["namespace"]
+        for secret in secrets.items:
+            name = secret.metadata.name
+            namespace = secret.metadata.namespace
             try:
                 self.kubernetes_service.getMongoObject(name, namespace)
             except ApiException as e:
-                if e.status == 404:
-                    # The secret exists but the Mongo object is belonged to does not, we have to delete it.
-                    self.kubernetes_service.deleteSecret(name, namespace)
-                else:
-                    logging.exception(e)
+                if e.status != 404:
+                    raise
+                # The secret exists but the Mongo object is belonged to does not, we have to delete it.
+                self.kubernetes_service.deleteSecret(name, namespace)
 
-    def _isCachedResource(self, resource) -> bool:
+    def _isCachedResource(self, resource: Union[V1Service, V1Secret, V1beta1StatefulSet]) -> bool:
         """
         Check if we have cached the specific version of the given resource locally.
         This limits the amount of calls to the Kubernetes API.
@@ -166,7 +165,7 @@ class PeriodicalCheckManager(Manager):
         version = resource.metadata.resource_version
         return uid in self.CACHED_RESOURCES and self.CACHED_RESOURCES[uid] == version
 
-    def _cacheResource(self, resource) -> None:
+    def _cacheResource(self, resource: Union[V1Service, V1Secret, V1beta1StatefulSet]) -> None:
         """
         Cache a resource by version locally.
         This limits the amount of calls to the Kubernetes API.

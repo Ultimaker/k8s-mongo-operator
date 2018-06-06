@@ -1,7 +1,11 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
+from copy import deepcopy
+
 import uuid
+from kubernetes.client import V1beta1CustomResourceDefinition, V1ObjectMeta, V1beta1CustomResourceDefinitionSpec, \
+    V1beta1CustomResourceDefinitionNames, models as k8s_models
 from typing import Dict
 
 from kubernetes import client
@@ -129,28 +133,49 @@ class KubernetesResources:
 
         # Create stateful set.
         return client.V1beta1StatefulSet(
-            metadata=client.V1ObjectMeta(
-                name=name,
-                namespace=namespace,
-                labels=cls.createDefaultLabels(name)
-            ),
-            spec=client.V1beta1StatefulSetSpec(
-                replicas=replicas,
-                service_name=name,
-                template=client.V1PodTemplateSpec(
+            metadata = client.V1ObjectMeta(name=name, namespace=namespace, labels=cls.createDefaultLabels(name)),
+            spec = client.V1beta1StatefulSetSpec(
+                replicas = replicas,
+                service_name = name,
+                template = client.V1PodTemplateSpec(
                     metadata = client.V1ObjectMeta(labels=cls.createDefaultLabels(name)),
-                    spec=client.V1PodSpec(containers=[mongo_container])
+                    spec = client.V1PodSpec(containers=[mongo_container]),
                 ),
-                volume_claim_templates=[client.V1PersistentVolumeClaim(
-                    metadata=client.V1ObjectMeta(
-                        name=cls.MONGO_STORAGE_NAME
+                volume_claim_templates = [client.V1PersistentVolumeClaim(
+                    metadata = client.V1ObjectMeta(name=cls.MONGO_STORAGE_NAME),
+                    spec = client.V1PersistentVolumeClaimSpec(
+                        access_modes = ["ReadWriteOnce"],
+                        resources = client.V1ResourceRequirements(requests={"storage": cls.STORAGE_SIZE}),
                     ),
-                    spec=client.V1PersistentVolumeClaimSpec(
-                        access_modes=["ReadWriteOnce"],
-                        resources=client.V1ResourceRequirements(
-                            requests={"storage": cls.STORAGE_SIZE}
-                        )
-                    )
                 )],
             ),
         )
+
+    @classmethod
+    def createLabelSelector(cls, labels: Dict[str, str]) -> str:
+        """
+        Converts the given label dictionary into a label selector string.
+        :param labels: The labels dict, e.g. {"name": "test"}.
+        :return: The label selector, e.g. "name=test".
+        """
+        return ",".join("{}={}".format(k, v) for k, v in labels.items() if v)
+
+    @classmethod
+    def deserialize(cls, data: dict, model_name: str) -> any:
+        """
+        Deserializes the dictionary into a kubernetes model.
+        :param data: The data dictionary.
+        :param model_name: The name of the model.
+        :return: An instance of the model with the given name.
+        """
+        model_class = getattr(k8s_models, model_name, None)
+        if not model_class or not isinstance(data, dict):
+            return data
+        kwargs = {}
+        if model_class.swagger_types is not None:
+            for attr, attr_type in model_class.swagger_types.items():
+                if model_class.attribute_map.get(attr):
+                    value = data.get(model_class.attribute_map[attr])
+                    kwargs[attr] = cls.deserialize(value, attr_type)
+
+        return model_class(**kwargs)

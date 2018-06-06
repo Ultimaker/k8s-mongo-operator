@@ -27,4 +27,4 @@ POD_NAME=$(kubectl get pods | grep -e "mongo-operator.*Running" | cut --fields=1
 kubectl apply --filename=examples/mongo.yaml
 
 # show the pod logs
-kubectl logs ${POD_NAME}
+kubectl logs ${POD_NAME} --follow

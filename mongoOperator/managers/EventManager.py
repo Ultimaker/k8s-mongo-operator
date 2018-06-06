@@ -47,7 +47,7 @@ class EventManager(Manager):
             # This event is not valid for us.
             logging.warning("Received malformed event: {}".format(event))
             return
-        
+
         if event["type"] not in EventTypes.__members__:
             # This event is not any of the allowed types.
             logging.warning("Received unknown event type: {}".format(event["type"]))
