@@ -111,11 +111,11 @@ class KubernetesResources:
             )],
             command=cls.MONGO_COMMAND.format(name=name).split(),
             image=cls.MONGO_IMAGE,
-            ports=client.V1ContainerPort(
+            ports=[client.V1ContainerPort(
                 name=cls.MONGO_NAME,
                 container_port=cls.MONGO_PORT,
                 protocol="TCP"
-            ),
+            )],
             volume_mounts=[client.V1VolumeMount(
                 name=cls.MONGO_STORAGE_NAME,
                 read_only=False,
