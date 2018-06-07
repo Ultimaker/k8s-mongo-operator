@@ -63,7 +63,6 @@ class EventManager(Manager):
         # Call the needed handler method.
         try:
             cluster_object = V1MongoClusterConfiguration(**event["object"])
-            print(cluster_object)
             event_type_to_action_map[event["type"]](cluster_object)
         except ApiException:
             logging.error("API error with %s object %s.", event["type"], event["object"])

@@ -2,6 +2,7 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
+from unittest.mock import patch
 
 from kubernetes.stream import stream
 from typing import Dict, Optional
@@ -49,7 +50,11 @@ class KubernetesService:
             with open("mongo_crd.yaml") as f:
                 definition_dict = yaml.load(f)
             body = KubernetesResources.deserialize(definition_dict, "V1beta1CustomResourceDefinition")
-            self.extensions_api.create_custom_resource_definition(body)
+
+            # issue with kubernetes causes status.condition==null, which raises an exception and breaks the connection.
+            # by ignoring the validation of this field in the client, we can keep the connection open.
+            with patch("kubernetes.client.models.v1beta1_custom_resource_definition_status.V1beta1CustomResourceDefinitionStatus.conditions"):
+                self.extensions_api.create_custom_resource_definition(body)
 
     def listMongoObjects(self, **kwargs) -> Dict[str, any]:
         """
@@ -81,21 +86,21 @@ class KubernetesService:
             -> V1ServiceList:
         """Get all services with the given labels."""
         label_selector = KubernetesResources.createLabelSelector(labels)
-        logging.info("Getting all services with labels %s", label_selector)
+        logging.debug("Getting all services with labels %s", label_selector)
         return self.core_api.list_service_for_all_namespaces(label_selector=label_selector)
 
     def listAllStatefulSetsWithLabels(self, labels: Dict[str, str] = KubernetesResources.createDefaultLabels())\
             -> V1StatefulSetList:
         """Get all stateful sets with the given labels."""
         label_selector = KubernetesResources.createLabelSelector(labels)
-        logging.info("Getting all stateful sets with labels %s", label_selector)
+        logging.debug("Getting all stateful sets with labels %s", label_selector)
         return self.apps_api.list_stateful_set_for_all_namespaces(label_selector=label_selector)
 
     def listAllSecretsWithLabels(self, labels: Dict[str, str] = KubernetesResources.createDefaultLabels())\
             -> V1SecretList:
         """Get al secrets with the given labels."""
         label_selector = KubernetesResources.createLabelSelector(labels)
-        logging.info("Getting all secrets with labels %s", label_selector)
+        logging.debug("Getting all secrets with labels %s", label_selector)
         return self.core_api.list_secret_for_all_namespaces(label_selector=label_selector)
 
     def createOperatorAdminSecret(self, cluster_object: V1MongoClusterConfiguration) -> \

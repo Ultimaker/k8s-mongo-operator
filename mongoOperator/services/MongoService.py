@@ -37,7 +37,7 @@ class MongoService:
         exec_response = self.kubernetes_service.execInPod(self.CONTAINER, pod_name, namespace, exec_command)
         logging.debug("Initializing replica, received %s", repr(exec_response))
 
-        if '{ "ok" : 1 }' in exec_response:
+        if '"ok" : 1' in exec_response:
             logging.info("USE FOR TESTS initializeReplicaSet: %s", exec_response)
             logging.info("initialized replica set {} in ns/{}".format(name, namespace))
         elif '"ok" : 0' in exec_response and '"codeName" : "NodeNotFound"' in exec_response:
@@ -66,14 +66,17 @@ class MongoService:
         logging.debug("Checking replicas, received %s", repr(exec_response))
 
         # If the replica set is not initialized yet, we initialize it
-        if '"ok" : 0' in exec_response and '"codeName" : "NotYetInitialized"' in exec_response:
-            logging.info("USE FOR TESTS checkReplicaSetOrInitialize: %s", exec_response)
+        if '"ok" : 0,' in exec_response and '"codeName" : "NotYetInitialized"' in exec_response:
+            logging.info("USE FOR TESTS checkReplicaSetOrInitialize OK=0: %s", exec_response)
             return self.initializeReplicaSet(cluster_object)
 
         # If we can get the replica set status without authenticating as the admin user first, we create the users
-        elif '"ok" : 1' in exec_response:
-            logging.info("USE FOR TESTS checkReplicaSetOrInitialize: %s", exec_response)
+        elif '"ok" : 1,' in exec_response:
             return self.createUsers(cluster_object)
+
+        elif "connection attempt failed" in exec_response:
+            logging.info("Could not connect to the pod {} @ ns/{}: {}".format(pod_name, namespace, repr(exec_response)))
+            return
 
         raise ValueError("Unexpected response trying to check replicas: %s", repr(exec_response))
 
@@ -94,23 +97,24 @@ class MongoService:
         for i in range(replicas):
             pod_name = "{}-{}".format(name, i)
             exec_command = MongoResources.createMongoExecCommand(mongo_command)
+
             # see tests for examples of these responses.
             exec_response = self.kubernetes_service.execInPod(self.CONTAINER, pod_name, namespace, exec_command)
             logging.debug("Received for pod %s: %s", i, repr(exec_response))
 
-            if "Successfully added user: {" in exec_response:
-                logging.info("Created users for %s in ns/%s", name, namespace)
-                logging.info("USE FOR TESTS createUsers: %s", exec_response)
-                continue
-
             if "Error: couldn't add user: not master :" in exec_response:
                 # most of the time member 0 is elected master, otherwise we get this error and need to loop through
                 # members until we find the master
-                logging.info("USE FOR TESTS createUsers: %s", exec_response)
+                logging.info("USE FOR TESTS createUsers (not master): %s", exec_response)
                 continue
 
-            if re.match(r"Error: couldn't add user: User .* already exists :", exec_response):
+            if "Successfully added user: {" in exec_response:
+                logging.info("Created users for %s in ns/%s", name, namespace)
                 logging.info("USE FOR TESTS createUsers: %s", exec_response)
-                continue
+                return
+
+            if re.search(r"Error: couldn\\*'t add user: User \S+ already exists :", exec_response):
+                logging.debug("The user already exists, skipping.")
+                return
 
             raise ValueError("Unexpected response creating users for %s in ns/%s\n%s", name, namespace, repr(exec_response))

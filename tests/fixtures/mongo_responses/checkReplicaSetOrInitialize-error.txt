@@ -1,0 +1,7 @@
+MongoDB shell version v3.6.4
+connecting to: mongodb://localhost:27017/admin
+2018-06-07T09:51:21.877+0000 W NETWORK  [thread1] Failed to connect to 127.0.0.1:27017, in(checking socket for error after poll), reason: Connection refused
+2018-06-07T09:51:21.878+0000 E QUERY    [thread1] Error: couldn't connect to server localhost:27017, connection attempt failed :
+connect@src/mongo/shell/mongo.js:251:13
+@(connect):1:6
+exception: connect failed

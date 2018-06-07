@@ -1,7 +1,6 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-import json
 import logging
 
 from kubernetes.client import V1Service, V1Secret, V1beta1StatefulSet
@@ -73,11 +72,16 @@ class PeriodicalCheckManager(Manager):
         try:
             secret = self.kubernetes_service.getOperatorAdminSecret(name, namespace)
         except ApiException as e:
-            if e.status == 404:
-                # The secret does not exist but it should, so we create it.
-                secret = self.kubernetes_service.createOperatorAdminSecret(cluster_object)
-            else:
+            secret = None
+            if e.status != 404:
                 raise
+
+        if not secret:
+            # The secret does not exist but it should, so we create it.
+            logging.info("Could not find admin secret for {} @ ns/{}. Creating it.".format(name, namespace))
+            secret = self.kubernetes_service.createOperatorAdminSecret(cluster_object)
+            if not secret:
+                raise ValueError("Could not find nor create the admin secret for {} @ ns/{}.".format(name, namespace))
 
         logging.info("Operator Admin Secret for %s @ %s has keys %s", name, namespace, sorted(secret.data.keys()))
 
@@ -100,8 +104,8 @@ class PeriodicalCheckManager(Manager):
 
         # Finally we cache the latest known version of the object.
         self._cacheResource(stateful_set)
-        logging.info("Status of stateful set of service %s @ %s is %s with %s replicas", name, namespace,
-                     stateful_set.status, stateful_set.spec.replicas)
+        logging.info("Stateful set of service %s @ %s is revision %s with %s replicas", name, namespace,
+                     stateful_set.status.update_revision, stateful_set.status.replicas)
     
     def _collectGarbage(self) -> None:
         """Collect garbage."""
@@ -147,6 +151,7 @@ class PeriodicalCheckManager(Manager):
             name = secret.metadata.name
             namespace = secret.metadata.namespace
             try:
+                # TODO: This is the secret name, not the cluster name!
                 self.kubernetes_service.getMongoObject(name, namespace)
             except ApiException as e:
                 if e.status != 404:
