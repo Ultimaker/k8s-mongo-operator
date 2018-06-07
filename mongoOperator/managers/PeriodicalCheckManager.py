@@ -42,7 +42,7 @@ class PeriodicalCheckManager(Manager):
             self._checkService(cluster_object)
             self._checkStatefulSet(cluster_object)
             self._checkOperatorAdminSecrets(cluster_object)
-            self.mongo_service.checkReplicaSetNeedsSetup(cluster_object)
+            self.mongo_service.checkReplicaSetOrInitialize(cluster_object)
 
     def _checkService(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """Check and ensure the service is running."""

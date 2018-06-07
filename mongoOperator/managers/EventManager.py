@@ -65,8 +65,8 @@ class EventManager(Manager):
             cluster_object = V1MongoClusterConfiguration(**event["object"])
             print(cluster_object)
             event_type_to_action_map[event["type"]](cluster_object)
-        except ApiException as error:
-            logging.exception("API error with %s object %s: %s", event["type"], event["object"], error)
+        except ApiException:
+            logging.error("API error with %s object %s.", event["type"], event["object"])
             raise
 
     def _add(self, cluster_object: V1MongoClusterConfiguration) -> None:

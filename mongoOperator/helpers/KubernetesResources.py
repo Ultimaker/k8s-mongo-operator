@@ -67,7 +67,7 @@ class KubernetesResources:
     def createService(cls, cluster_object: V1MongoClusterConfiguration) -> client.V1Service:
         """
         Creates a service model object.
-        :param cluster_object: The cluster resource definition model.
+        :param cluster_object: The cluster object from the YAML file.
         :return: The service object.
         """
         # Parse cluster data object.
