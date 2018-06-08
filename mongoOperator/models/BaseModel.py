@@ -53,5 +53,5 @@ class BaseModel:
         Shows the string-representation of this object.
         :return: The object as string.
         """
-        return "{}()".format(self.__class__.__name__,
-                             ", ".join('{}={}'.format(attr, value) for attr, value in self.getValues().items()))
+        return "{}({})".format(self.__class__.__name__,
+                               ", ".join('{}={}'.format(attr, value) for attr, value in self.getValues().items()))

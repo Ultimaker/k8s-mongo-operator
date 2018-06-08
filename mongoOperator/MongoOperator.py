@@ -2,10 +2,8 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
-import threading
 from time import sleep
 
-from mongoOperator.managers.EventManager import EventManager
 from mongoOperator.managers.PeriodicalCheckManager import PeriodicalCheckManager
 
 
@@ -14,45 +12,29 @@ class MongoOperator:
     The Mongo operator manages MongoDB replica sets and backups in a Kubernetes cluster.
     """
 
-    def __init__(self, check_seconds: float = 5.0, sleep_seconds: float = 10.0) -> None:
-        self._shutting_down = threading.Event()
-        self._manager_threads = []
-        self._check_seconds = check_seconds
+    def __init__(self, sleep_per_manager: float = 5.0, sleep_per_run: float = 5.0) -> None:
+        """
+        :param sleep_per_manager: How many seconds we should sleep after each of the managers runs once.
+        :param sleep_per_run: How many seconds we should sleep after all the managers have run.
+        """
+        self._sleep_per_manager = sleep_per_manager
+        self._sleep_per_run = sleep_per_run
 
-        # Create the periodic replica set check in a separate thread.
-        self._manager_threads.append(threading.Thread(
-            name = "PeriodicCheck",
-            target = self._startPeriodicalCheck,
-            args = (self._shutting_down, sleep_seconds)
-        ))
-        
-        # Create the Kubernetes event listener in a separate thread.
-        self._manager_threads.append(threading.Thread(
-            name = "EventListener",
-            target = self._startEventListener,
-            args = (self._shutting_down, sleep_seconds)
-        ))
+        self._managers = [PeriodicalCheckManager()]
 
-    def run(self):
+    def run_forever(self):
         try:
-            while True:
-                # Run the short-lived manager threads every few seconds but only allow a single instance per type.
-                for thread in self._manager_threads:
-                    if not thread.ident:
-                        thread.start()
-                sleep(self._check_seconds)
+            for _ in range(10):  # TODO: return this to: while True:
+                logging.info("********* Starting to run %s managers *********", len(self._managers))
+                for manager in self._managers:
+                    logging.info("Running manager %s...", manager.name)
+                    manager.run()
+                    logging.info("Done running %s. Waiting %s seconds", manager.name, self._sleep_per_run)
+                    sleep(self._sleep_per_manager)
+                logging.info("Done running all managers. Waiting %s seconds", self._sleep_per_run)
+                sleep(self._sleep_per_run)
         except KeyboardInterrupt:
-            logging.info("Application interrupted, stopping threads gracefully...")
-            self._shutting_down.set()
-            for thread in self._manager_threads:
-                thread.join()
-    
-    @staticmethod
-    def _startPeriodicalCheck(shutting_down_event: "threading.Event", sleep_seconds: float) -> None:
-        manager = PeriodicalCheckManager(shutting_down_event, sleep_seconds)
-        manager.run()
-    
-    @staticmethod
-    def _startEventListener(shutting_down_event: "threading.Event", sleep_seconds: float) -> None:
-        manager = EventManager(shutting_down_event, sleep_seconds)
-        manager.run()
+            logging.info("Application interrupted, stopping managers gracefully...")
+            for manager in self._managers:
+                manager.beforeShuttingDown()
+        logging.info("Done running operator")

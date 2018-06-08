@@ -25,5 +25,5 @@ spec:
         name: mongo-operator
         env:
         - name: LOGGING_LEVEL
-          value: DEBUG
+          value: INFO
       serviceAccount: mongo-operator-service-account

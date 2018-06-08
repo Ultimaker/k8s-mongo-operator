@@ -1,0 +1,19 @@
+apiVersion: "operators.ultimaker.com/v1"
+kind: Mongo
+metadata:
+  name: mongo-cluster
+  namespace: default
+spec:
+  mongodb:
+    replicas: 3  # Must be an odd number of minimum 3.
+    cpu_limit: "100m"
+    memory_limit: "64Mi"
+  backups:
+    gcs:
+      bucket: "mongo-backups"
+      service_account:
+        name: MONGO_SERVICE_ACCOUNT
+        valueFrom:
+          secretKeyRef:
+            key: json
+            name: storage-serviceaccount

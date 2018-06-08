@@ -23,8 +23,10 @@ kubectl describe deploy mongo-operator
 sleep 10
 POD_NAME=$(kubectl get pods | grep -e "mongo-operator.*Running" | cut --fields=1 --delimiter=" ")
 
-# apply the example file
-kubectl apply --filename=examples/mongo.yaml
+# apply the example file, scale it up in 30 seconds and scale down in 60
+kubectl apply --filename=examples/mongo-3-replicas.yaml
+(sleep 30; kubectl apply --filename=examples/mongo-5-replicas.yaml)&
+(sleep 60; kubectl apply --filename=examples/mongo-3-replicas.yaml)&
 
 # show the pod logs
 kubectl logs ${POD_NAME} --follow

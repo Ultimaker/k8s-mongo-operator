@@ -17,7 +17,7 @@ class TestMongoOperator(TestCase):
         sleep_mock.side_effect = None, KeyboardInterrupt
         thread_mock.return_value.ident = None
 
-        operator = MongoOperator(check_seconds=0.005, sleep_seconds=0.01)
+        operator = MongoOperator(sleep_per_manager=0.005, sleep_per_run=0.01)
         operator.run()
         expected_calls = [
             call(args=(operator._shutting_down, 0.01), name='PeriodicCheck', target=operator._startPeriodicalCheck),
