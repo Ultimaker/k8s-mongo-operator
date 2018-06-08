@@ -256,9 +256,13 @@ class KubernetesService:
         :param namespace: The namespace in which to delete the service.
         :return: The deletion status.
         """
-        body = V1DeleteOptions()
         logging.info("Deleting service %s @ ns/%s.", name, namespace)
-        return self.core_api.delete_namespaced_service(name, namespace, body)
+        body = V1DeleteOptions()
+        try:
+            return self.core_api.delete_namespaced_service(name, namespace, body)
+        except TypeError:
+            # bug in kubernetes client 5.0.0 - body parameter was missing.
+            return self.core_api.delete_namespaced_service(name, namespace)
 
     def getStatefulSet(self, name: str, namespace: str) -> client.V1beta1StatefulSet:
         """

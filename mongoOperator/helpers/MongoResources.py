@@ -2,6 +2,8 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import json
+from json import JSONDecodeError
+
 import re
 from base64 import b64decode
 from typing import List, Dict
@@ -48,15 +50,18 @@ class MongoResources:
         :param cluster_object: The cluster object from the YAML file.
         :return: The command to be sent to MongoDB.
         """
-        name = cluster_object.metadata.name
-        namespace = cluster_object.metadata.namespace
-        replicas = cluster_object.spec.mongodb.replicas
-        replica_set_config = {
-            "_id": name,
-            "version": 1,
-            "members": [{"_id": i, "host": cls.getMemberHostname(i, name, namespace)} for i in range(replicas)],
-        }
+        replica_set_config = cls._createReplicaConfig(cluster_object)
         return "rs.initiate({})".format(json.dumps(replica_set_config))
+
+    @classmethod
+    def createReplicaReconfigureCommand(cls, cluster_object) -> str:
+        """
+        Creates a MongoDB command that reconfigures the replica set, i.e. a rs.reconfig() command with the host names.
+        :param cluster_object: The cluster object from the YAML file.
+        :return: The command to be sent to MongoDB.
+        """
+        replica_set_config = cls._createReplicaConfig(cluster_object)
+        return "rs.reconfig({})".format(json.dumps(replica_set_config))
 
     @classmethod
     def createCreateAdminCommand(cls, admin_credentials: client.V1Secret) -> str:
@@ -92,21 +97,40 @@ class MongoResources:
         :return: The JSON object found in the response.
         :raise ValueError: If no JSON object was found.
         """
-        json_search = re.search(r"^[^{}]+({[\s\S]*})\s+$", exec_response)
+        json_search = re.search(r"^[^{}]+({[\s\S]*})[\s\d]+$", exec_response)
         if json_search:
             clean_json = json_search.group(1)
-            clean_json = re.sub("Timestamp\((\d+), 1\)", r"\1", clean_json)
+            clean_json = re.sub("Timestamp\((\d+), (\d)\)", r"\1.\2", clean_json)
             clean_json = re.sub("BinData\(0,(.+)\)", r"\1", clean_json)
-            clean_json = re.sub("NumberLong\((\d+)\)", r"\1", clean_json)
+            clean_json = re.sub("NumberLong\((-?\d+)\)", r"\1", clean_json)
             clean_json = re.sub("ISODate\((\S+)\)", r"\1", clean_json)
-            return json.loads(clean_json)
+            try:
+                return json.loads(clean_json)
+            except JSONDecodeError as err:
+                raise ValueError("Cannot parse JSON because of error {}:\n{}".format(err, clean_json))
 
         exception_search = re.search(r"exception: ([^\n]+)", exec_response)
         if exception_search:
-            raise ValueError(exception_search.group(1))
+            raise ValueError(exception_search.group(1).strip(": "))
 
         error_search = re.search(r"Error: (.+)", exec_response)
         if error_search:
-            raise ValueError(error_search.group(1))
+            raise ValueError(error_search.group(1).strip(": "))
 
         raise ValueError("Cannot parse MongoDB status response: {}".format(exec_response))
+
+    @classmethod
+    def _createReplicaConfig(cls, cluster_object) -> Dict[str, any]:
+        """
+        Creates a dict with the replica set configuration for mongo.
+        :param cluster_object: The cluster object from the YAML file.
+        :return: A dict with the configuration.
+        """
+        name = cluster_object.metadata.name
+        namespace = cluster_object.metadata.namespace
+        replicas = cluster_object.spec.mongodb.replicas
+        return {
+            "_id": name,
+            "version": 1,
+            "members": [{"_id": i, "host": cls.getMemberHostname(i, name, namespace)} for i in range(replicas)],
+        }

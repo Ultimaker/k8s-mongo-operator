@@ -4,7 +4,7 @@
 import logging
 
 from kubernetes.client import V1Service, V1Secret, V1beta1StatefulSet
-from typing import Union, Dict
+from typing import Union, Dict, TypeVar, Callable, Optional
 
 from kubernetes.client.rest import ApiException
 
@@ -46,8 +46,8 @@ class ClusterChecker:
         :param cluster_object: The cluster object from the YAML file.
         """
         if self.CACHED_RESOURCES.get(cluster_object.metadata.uid) == cluster_object.metadata.resource_version:
-            logging.info("Cluster object %s has been checked already in version %s.",
-                         cluster_object.metadata.uid, cluster_object.metadata.resource_version)
+            logging.debug("Cluster object %s has been checked already in version %s.",
+                          cluster_object.metadata.uid, cluster_object.metadata.resource_version)
             # we still want to check the replicas to make sure everything is working.
             self.mongo_service.checkReplicaSetOrInitialize(cluster_object)
         else:

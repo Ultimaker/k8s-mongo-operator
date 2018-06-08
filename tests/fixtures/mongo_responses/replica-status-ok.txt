@@ -93,7 +93,7 @@ MongoDB server version: 3.6.4
 	"ok" : 1,
 	"operationTime" : Timestamp(1528362783, 1),
 	"$clusterTime" : {
-		"clusterTime" : Timestamp(1528362785, 1),
+		"clusterTime" : Timestamp(1528362785, 0),
 		"signature" : {
 			"hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
 			"keyId" : NumberLong(0)
