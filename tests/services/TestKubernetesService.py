@@ -92,8 +92,6 @@ class TestKubernetesService(TestCase):
     def test_createMongoObjectDefinition(self, client_mock):
         service = KubernetesService()
         client_mock.reset_mock()
-        client_mock.ApiextensionsV1beta1Api.return_value.list_custom_resource_definition.return_value = \
-            V1beta1CustomResourceDefinitionList(items=[])
 
         expected_def = V1beta1CustomResourceDefinition(
             api_version="apiextensions.k8s.io/v1beta1",
@@ -107,7 +105,13 @@ class TestKubernetesService(TestCase):
             )
         )
 
-        self.assertIsNone(service.createMongoObjectDefinition())
+        client_mock.ApiextensionsV1beta1Api.return_value.list_custom_resource_definition.return_value = \
+            V1beta1CustomResourceDefinitionList(items=[])
+        client_mock.ApiextensionsV1beta1Api.return_value.create_custom_resource_definition.return_value = expected_def
+
+        result = service.createMongoObjectDefinition()
+
+        self.assertEquals(expected_def, result)
         expected_calls = [
             call.ApiextensionsV1beta1Api().list_custom_resource_definition(),
             call.ApiextensionsV1beta1Api().create_custom_resource_definition(expected_def),
@@ -122,9 +126,12 @@ class TestKubernetesService(TestCase):
         item.spec.names.plural = "mongos"
         client_mock.ApiextensionsV1beta1Api.return_value.list_custom_resource_definition.return_value.items = [item]
 
-        self.assertIsNone(service.createMongoObjectDefinition())
-        expected = [call.ApiextensionsV1beta1Api().list_custom_resource_definition()]
-        self.assertEqual(expected, client_mock.mock_calls)
+        result = service.createMongoObjectDefinition()
+
+        self.assertEquals(item, result)
+
+        expected_calls = [call.ApiextensionsV1beta1Api().list_custom_resource_definition()]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
 
     def test_listMongoObjects(self, client_mock):
         service = KubernetesService()
@@ -274,6 +281,7 @@ class TestKubernetesService(TestCase):
         service = KubernetesService()
         client_mock.reset_mock()
         client_mock.CoreV1Api.return_value.create_namespaced_secret.side_effect = ApiException(status=409)
+        client_mock.CoreV1Api.return_value.create_namespaced_secret.side_effect.body = "{}"
 
         secret_data = {"user": "unit-test", "password": "secret"}
         result = service.createSecret(self.name, self.namespace, secret_data)

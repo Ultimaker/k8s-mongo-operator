@@ -12,29 +12,17 @@ class TestMongoOperator(TestCase):
     maxDiff = None
 
     @patch("mongoOperator.MongoOperator.sleep")
-    @patch("mongoOperator.MongoOperator.threading.Thread")
-    def test_run(self, thread_mock, sleep_mock):
-        sleep_mock.side_effect = None, KeyboardInterrupt
-        thread_mock.return_value.ident = None
+    @patch("mongoOperator.MongoOperator.ClusterChecker")
+    def test_run(self, checker_mock, sleep_mock):
+        sleep_mock.side_effect = None, KeyboardInterrupt  # we force stop on the 2nd run
+        checker_mock.return_value.collectGarbage.side_effect = Exception(), None  # break the 1st run
 
-        operator = MongoOperator(sleep_per_manager=0.005, sleep_per_run=0.01)
-        operator.run()
+        operator = MongoOperator(sleep_per_run=0.01)
+        operator.run_forever()
         expected_calls = [
-            call(args=(operator._shutting_down, 0.01), name='PeriodicCheck', target=operator._startPeriodicalCheck),
-            call(args=(operator._shutting_down, 0.01), name='EventListener', target=operator._startEventListener),
-            call().start(), call().start(), call().start(), call().start(),
-            call().join(), call().join(),
+            call(),
+            call().checkExistingClusters(), call().collectGarbage(),
+            call().checkExistingClusters(), call().collectGarbage(), call().streamEvents(),
         ]
-        self.assertEqual(expected_calls, thread_mock.mock_calls)
-
-    @patch("mongoOperator.managers.PeriodicalCheckManager.PeriodicalCheckManager.run")
-    def test__startPeriodicalCheck(self, run_mock):
-        shutting_down_event = threading.Event()
-        MongoOperator._startPeriodicalCheck(shutting_down_event, sleep_seconds=0.01)
-        run_mock.assert_called_once_with()
-
-    @patch("mongoOperator.managers.EventManager.EventManager.run")
-    def test__startEventListener(self, run_mock):
-        shutting_down_event = threading.Event()
-        MongoOperator._startEventListener(shutting_down_event, sleep_seconds=0.01)
-        run_mock.assert_called_once_with()
+        self.assertEqual(expected_calls, checker_mock.mock_calls)
+        self.assertEqual([call(0.01), call(0.01)], sleep_mock.mock_calls)
