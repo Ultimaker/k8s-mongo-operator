@@ -21,10 +21,14 @@ class MongoOperator:
     def run_forever(self):
         checker = ClusterChecker()
         try:
-            for _ in range(10):  # TODO: return this to: while True:
-                checker.checkExistingClusters()
-                checker.collectGarbage()
-                # TODO: checker.streamEvents()
+            for _ in range(100):  # TODO: return this to: while True:
+                logging.info("**** Running Cluster Check ****")
+                try:
+                    checker.checkExistingClusters()
+                    checker.collectGarbage()
+                    # TODO: checker.streamEvents()
+                except Exception as e:
+                    logging.exception(e)
 
                 logging.info("Waiting %s seconds", self._sleep_per_run)
                 sleep(self._sleep_per_run)

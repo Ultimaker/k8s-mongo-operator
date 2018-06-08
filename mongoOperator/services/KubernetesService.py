@@ -78,7 +78,7 @@ class KubernetesService:
         definition = self.createMongoObjectDefinition()
         for _ in range(self.LIST_CUSTOM_OBJECTS_RETRIES):
             try:
-                logging.info("Listing resources based on definition %s", definition.metadata.uid)
+                logging.debug("Listing resources based on definition %s", definition.metadata.uid)
                 return self.custom_objects_api.list_cluster_custom_object(Settings.CUSTOM_OBJECT_API_GROUP,
                                                                           Settings.CUSTOM_OBJECT_API_VERSION,
                                                                           Settings.CUSTOM_OBJECT_RESOURCE_PLURAL,
@@ -89,6 +89,8 @@ class KubernetesService:
                 logging.info("Could not list the custom Mongo objects: %s. The definition is probably being "
                              "initialized, we wait %s seconds.", e.reason, self.LIST_CUSTOM_OBJECTS_WAIT)
                 sleep(self.LIST_CUSTOM_OBJECTS_WAIT)
+
+        raise TimeoutError("Could not list the custom mongo objects after %s retries", self.LIST_CUSTOM_OBJECTS_RETRIES)
 
     def getMongoObject(self, name: str, namespace: str) -> V1MongoClusterConfiguration:
         """
@@ -200,7 +202,7 @@ class KubernetesService:
         """
         secret = self.getSecret(secret_name, namespace)
         secret.string_data = secret_data
-        logging.info("Updating secret %s @ ns/%s. %s", secret_name, namespace, secret_data)
+        logging.info("Updating secret %s @ ns/%s", secret_name, namespace)
         return self.core_api.patch_namespaced_secret(secret_name, namespace, secret)
 
     def deleteSecret(self, name: str, namespace: str) -> client.V1Status:

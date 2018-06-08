@@ -25,6 +25,8 @@ POD_NAME=$(kubectl get pods | grep -e "mongo-operator.*Running" | cut --fields=1
 
 # apply the example file
 kubectl apply --filename=examples/mongo-3-replicas.yaml
+(sleep 120; echo "$$$$$$$ Applying 5 replicas"; kubectl apply --filename=examples/mongo-5-replicas.yaml)&
+(sleep 300; echo "$$$$$$$ Applying 3 replicas"; kubectl apply --filename=examples/mongo-3-replicas.yaml)&
 
 # show the pod logs
 kubectl logs ${POD_NAME} --follow

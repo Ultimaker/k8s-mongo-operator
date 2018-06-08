@@ -29,7 +29,7 @@ class ClusterChecker:
         If they are not, they should be (re-)created to ensure the cluster is in the expected state.
         """
         mongo_objects = self.kubernetes_service.listMongoObjects()
-        logging.debug("Found %s mongo objects.", len(mongo_objects["items"]))
+        logging.info("Checking %s mongo objects.", len(mongo_objects["items"]))
         for cluster_dict in mongo_objects["items"]:
             cluster_object = V1MongoClusterConfiguration(**cluster_dict)
             self.checkCluster(cluster_object)
@@ -45,17 +45,18 @@ class ClusterChecker:
         Checks whether the given cluster is configured and updated.
         :param cluster_object: The cluster object from the YAML file.
         """
-        if self._isCachedResource(cluster_object):
+        if self.CACHED_RESOURCES.get(cluster_object.metadata.uid) == cluster_object.metadata.resource_version:
             logging.info("Cluster object %s has been checked already in version %s.",
                          cluster_object.metadata.uid, cluster_object.metadata.resource_version)
+            # we still want to check the replicas to make sure everything is working.
+            self.mongo_service.checkReplicaSetOrInitialize(cluster_object)
         else:
             self._checkService(cluster_object)
             self._checkStatefulSet(cluster_object)
             self._checkOperatorAdminSecrets(cluster_object)
-
-        # we still want to check the replicas to make sure everything is working.
-        self.mongo_service.checkReplicaSetOrInitialize(cluster_object)
-        self._cacheResource(cluster_object)
+            self.mongo_service.checkReplicaSetOrInitialize(cluster_object)
+            self.mongo_service.createUsers(cluster_object)
+            self.CACHED_RESOURCES[cluster_object.metadata.uid] = cluster_object.metadata.resource_version
 
     def _checkService(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """
@@ -71,14 +72,12 @@ class ClusterChecker:
             if e.status != 404:
                 raise
 
-        if not service:
+        if service:
+            # We update the service to ensure it is up to date.
+            service = self.kubernetes_service.updateService(cluster_object)
+        else:
             # The service does not exist but should, so we create it.
             service = self.kubernetes_service.createService(cluster_object)
-        elif not self._isCachedResource(service):
-            # If it's not cached, we update the service to ensure it is up to date.
-            service = self.kubernetes_service.updateService(cluster_object)
-
-        self._cacheResource(service)
 
         # Finally we cache the latest known version of the object.
         logging.info("Service %s @ %s is version %s", name, namespace, service.metadata.resource_version)
@@ -97,17 +96,15 @@ class ClusterChecker:
             if e.status != 404:
                 raise
 
-        if not secret:
+        if secret:
+            # We update the secret to ensure it is up to date.
+            secret = self.kubernetes_service.updateOperatorAdminSecret(cluster_object)
+        else:
             # The secret does not exist but it should, so we create it.
             logging.info("Could not find admin secret for {} @ ns/{}. Creating it.".format(name, namespace))
             secret = self.kubernetes_service.createOperatorAdminSecret(cluster_object)
             if not secret:
                 raise ValueError("Could not find nor create the admin secret for {} @ ns/{}.".format(name, namespace))
-        elif not self._isCachedResource(secret):
-            # If it's not cached, we update the secret to ensure it is up to date.
-            secret = self.kubernetes_service.updateOperatorAdminSecret(cluster_object)
-
-        self._cacheResource(secret)
 
         logging.info("Operator Admin Secret for %s @ ns/%s has version %s", name, namespace,
                      secret.metadata.resource_version)
@@ -126,13 +123,11 @@ class ClusterChecker:
             if e.status != 404:
                 raise
 
-        if not stateful_set:
-            stateful_set = self.kubernetes_service.createStatefulSet(cluster_object)
-        elif not self._isCachedResource(stateful_set):
-            # If it's not cached, we update the stateful set to ensure it is up to date.
+        if stateful_set:
+            # We update the stateful set to ensure it is up to date.
             stateful_set = self.kubernetes_service.updateStatefulSet(cluster_object)
-
-        self._cacheResource(stateful_set)
+        else:
+            stateful_set = self.kubernetes_service.createStatefulSet(cluster_object)
 
         # Finally we cache the latest known version of the object.
         logging.info("Stateful set %s @ ns/%s is version %s with %s replicas", name, namespace,
