@@ -8,13 +8,12 @@ from typing import Union, Dict
 
 from kubernetes.client.rest import ApiException
 
-from mongoOperator.managers.Manager import Manager
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 from mongoOperator.services.MongoService import MongoService
 
 
-class PeriodicalCheckManager(Manager):
+class ClusterChecker:
     """
     Manager that periodically checks the status of the MongoDB objects in the cluster.
     """
@@ -24,12 +23,7 @@ class PeriodicalCheckManager(Manager):
 
     CACHED_RESOURCES = {}  # type: Dict[str, str]  # format: {object_kind + object_uid: resource_version}
 
-    def execute(self) -> None:
-        """Execute the manager logic."""
-        self._checkExisting()
-        self._collectGarbage()
-
-    def _checkExisting(self) -> None:
+    def checkExistingClusters(self) -> None:
         """
         Check all Mongo objects and see if the sub objects are available.
         If they are not, they should be (re-)created to ensure the cluster is in the expected state.
@@ -39,6 +33,12 @@ class PeriodicalCheckManager(Manager):
         for cluster_dict in mongo_objects["items"]:
             cluster_object = V1MongoClusterConfiguration(**cluster_dict)
             self.checkCluster(cluster_object)
+
+    def collectGarbage(self) -> None:
+        """Collect garbage."""
+        self._cleanServices()
+        self._cleanStatefulSets()
+        self._cleanSecrets()
 
     def checkCluster(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """
@@ -105,7 +105,7 @@ class PeriodicalCheckManager(Manager):
                 raise ValueError("Could not find nor create the admin secret for {} @ ns/{}.".format(name, namespace))
         elif not self._isCachedResource(secret):
             # If it's not cached, we update the secret to ensure it is up to date.
-            secret = self.kubernetes_service.updateSecret(secret.metadata.name, secret.metadata.namespace, secret.data)
+            secret = self.kubernetes_service.updateOperatorAdminSecret(cluster_object)
 
         self._cacheResource(secret)
 
@@ -137,12 +137,6 @@ class PeriodicalCheckManager(Manager):
         # Finally we cache the latest known version of the object.
         logging.info("Stateful set %s @ ns/%s is version %s with %s replicas", name, namespace,
                      stateful_set.metadata.resource_version, stateful_set.status.replicas)
-    
-    def _collectGarbage(self) -> None:
-        """Collect garbage."""
-        self._cleanServices()
-        self._cleanStatefulSets()
-        self._cleanSecrets()
 
     def _cleanServices(self) -> None:
         """Clean left-over services."""
@@ -198,9 +192,9 @@ class PeriodicalCheckManager(Manager):
         :param resource: Kubernetes cluster resource to check cache for.
         :return: True if cached, False otherwise.
         """
-        uid = resource.metadata.uid
+        uid = resource.kind + resource.metadata.uid
         version = resource.metadata.resource_version
-        return uid in self.CACHED_RESOURCES and self.CACHED_RESOURCES[uid] == version
+        return self.CACHED_RESOURCES.get(uid) == version
 
     def _cacheResource(self, resource: Union[V1Service, V1Secret, V1beta1StatefulSet, V1MongoClusterConfiguration]
                        ) -> None:

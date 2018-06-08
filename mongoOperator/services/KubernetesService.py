@@ -90,7 +90,7 @@ class KubernetesService:
                              "initialized, we wait %s seconds.", e.reason, self.LIST_CUSTOM_OBJECTS_WAIT)
                 sleep(self.LIST_CUSTOM_OBJECTS_WAIT)
 
-    def getMongoObject(self, name: str, namespace: str) -> Optional[V1MongoClusterConfiguration]:
+    def getMongoObject(self, name: str, namespace: str) -> V1MongoClusterConfiguration:
         """
         Get a single Kubernetes Mongo object.
         :param name: The name of the object to get.
@@ -140,7 +140,16 @@ class KubernetesService:
         return self.createSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
                                  cluster_object.metadata.namespace, secret_data)
 
-    def getOperatorAdminSecret(self, cluster_name: str, namespace: str) -> Optional[client.V1Secret]:
+    def updateOperatorAdminSecret(self, cluster_object: V1MongoClusterConfiguration) -> client.V1Secret:
+        """
+        Create the operator admin secret.
+        :param cluster_object: The cluster object from the YAML file.
+        """
+        secret_data = {"username": "root", "password": KubernetesResources.createRandomPassword()}
+        return self.updateSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
+                                 cluster_object.metadata.namespace, secret_data)
+
+    def getOperatorAdminSecret(self, cluster_name: str, namespace: str) -> client.V1Secret:
         """
         Retrieves the operator admin secret.
         :param cluster_name: Name of the cluster.
@@ -158,7 +167,7 @@ class KubernetesService:
         """
         return self.deleteSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_name), namespace)
 
-    def getSecret(self, secret_name: str, namespace: str) -> Optional[client.V1Secret]:
+    def getSecret(self, secret_name: str, namespace: str) -> client.V1Secret:
         """
         Retrieves the secret with the given name.
         :param secret_name: The name of the secret.
@@ -181,7 +190,7 @@ class KubernetesService:
         with IgnoreIfExists():
             return self.core_api.create_namespaced_secret(namespace, secret_body)
 
-    def updateSecret(self, secret_name: str, namespace: str, secret_data: Dict[str, str]) -> Optional[client.V1Secret]:
+    def updateSecret(self, secret_name: str, namespace: str, secret_data: Dict[str, str]) -> client.V1Secret:
         """
         Updates the given Kubernetes secret.
         :param secret_name: Unique name of the secret.
@@ -191,7 +200,7 @@ class KubernetesService:
         """
         secret = self.getSecret(secret_name, namespace)
         secret.string_data = secret_data
-        logging.info("Updating secret %s @ ns/%s.", secret_name, namespace)
+        logging.info("Updating secret %s @ ns/%s. %s", secret_name, namespace, secret_data)
         return self.core_api.patch_namespaced_secret(secret_name, namespace, secret)
 
     def deleteSecret(self, name: str, namespace: str) -> client.V1Status:
@@ -205,7 +214,7 @@ class KubernetesService:
         logging.info("Deleting secret %s @ ns/%s.", name, namespace)
         return self.core_api.delete_namespaced_secret(name, namespace, body)
 
-    def getService(self, name: str, namespace: str) -> Optional[client.V1Service]:
+    def getService(self, name: str, namespace: str) -> client.V1Service:
         """
         Gets an existing service from the cluster.
         :param name: The name of the service to get.
@@ -214,7 +223,7 @@ class KubernetesService:
         """
         return self.core_api.read_namespaced_service(name, namespace)
 
-    def createService(self, cluster_object: V1MongoClusterConfiguration) -> client.V1Service:
+    def createService(self, cluster_object: V1MongoClusterConfiguration) -> Optional[client.V1Service]:
         """
         Creates the given cluster.
         :param cluster_object: The cluster object from the YAML file.
@@ -249,7 +258,7 @@ class KubernetesService:
         logging.info("Deleting service %s @ ns/%s.", name, namespace)
         return self.core_api.delete_namespaced_service(name, namespace, body)
 
-    def getStatefulSet(self, name: str, namespace: str) -> Optional[client.V1beta1StatefulSet]:
+    def getStatefulSet(self, name: str, namespace: str) -> client.V1beta1StatefulSet:
         """
         Get an existing stateful set from the cluster.
         :param name: The name of the stateful set to get.
@@ -258,7 +267,7 @@ class KubernetesService:
         """
         return self.apps_api.read_namespaced_stateful_set(name, namespace)
 
-    def createStatefulSet(self, cluster_object: V1MongoClusterConfiguration) -> client.V1beta1StatefulSet:
+    def createStatefulSet(self, cluster_object: V1MongoClusterConfiguration) -> Optional[client.V1beta1StatefulSet]:
         """
         Creates the stateful set for the given cluster object.
         :param cluster_object: The cluster object from the YAML file.

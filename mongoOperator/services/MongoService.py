@@ -39,7 +39,8 @@ class MongoService:
             try:
                 return self.kubernetes_service.execInPod(self.CONTAINER, pod_name, namespace, exec_command)
             except ApiException as e:
-                if e.reason not in ("Handshake status 500 Internal Server Error", "Handshake status 404 Not Found"):
+                if "Handshake status" not in e.reason:
+                    logging.error("Error sending following command to pod %s: %s", pod_name, repr(mongo_command))
                     raise
                 logging.info("Could not check the replica set or initialize it because of %s. The service is probably "
                              "starting up. We wait %s seconds and retry.", e.reason, self.EXEC_IN_POD_WAIT)
@@ -84,15 +85,7 @@ class MongoService:
         mongo_command = MongoResources.createStatusCommand()
         pod_name = "{}-0".format(name)
 
-        try:
-            exec_response = self._execInPod(pod_name, namespace, mongo_command)
-        except ApiException as e:
-            if e.reason not in ("Handshake status 500 Internal Server Error", "Handshake status 404 Not Found"):
-                raise
-            logging.info("Could not check the replica set or initialize it because of %s. "
-                         "The service is probably starting up.", e)
-            return
-
+        exec_response = self._execInPod(pod_name, namespace, mongo_command)
         logging.info("Checking replicas, received %s", repr(exec_response))
 
         # If the replica set is not initialized yet, we initialize it
@@ -101,6 +94,7 @@ class MongoService:
 
         # If we can get the replica set status without authenticating as the admin user first, we create the users
         elif '"ok" : 1,' in exec_response:
+            # TODO: Parse this response.
             return self.createUsers(cluster_object)
 
         elif "connection attempt failed" in exec_response:
@@ -122,6 +116,8 @@ class MongoService:
 
         admin_credentials = self.kubernetes_service.getOperatorAdminSecret(name, namespace)
         mongo_command = MongoResources.createCreateAdminCommand(admin_credentials)
+
+        logging.info("Creating users for %s pods", replicas)
 
         for i in range(replicas):
             pod_name = "{}-{}".format(name, i)
