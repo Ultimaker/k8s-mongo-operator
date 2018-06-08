@@ -73,20 +73,20 @@ class MongoService:
         :raise ValueError: In case we receive an unexpected response from Mongo.
         :raise ApiException: In case we receive an unexpected response from Kubernetes.
         """
-        name = cluster_object.metadata.name
+        cluster_name = cluster_object.metadata.name
         namespace = cluster_object.metadata.namespace
 
-        mongo_command = MongoResources.createReplicaInitiateCommand(cluster_object)
+        create_replica_command = MongoResources.createReplicaInitiateCommand(cluster_object)
 
-        exec_response = self._execInPod(0, name, namespace, mongo_command)
+        create_replica_response = self._execInPod(0, cluster_name, namespace, create_replica_command)
 
-        logging.debug("Initializing replica, received %s", repr(exec_response))
+        logging.debug("Initializing replica, received %s", repr(create_replica_response))
 
-        if exec_response["ok"] == 1:
-            logging.info("Initialized replica set %s @ ns/%s", name, namespace)
+        if create_replica_response["ok"] == 1:
+            logging.info("Initialized replica set %s @ ns/%s", cluster_name, namespace)
         else:
             raise ValueError("Unexpected response initializing replica set {} @ ns/{}:\n{}"
-                             .format(name, namespace, exec_response))
+                             .format(cluster_name, namespace, create_replica_response))
 
     def reconfigureReplicaSet(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """
@@ -95,20 +95,21 @@ class MongoService:
         :raise ValueError: In case we receive an unexpected response from Mongo.
         :raise ApiException: In case we receive an unexpected response from Kubernetes.
         """
-        name = cluster_object.metadata.name
+        cluster_name = cluster_object.metadata.name
         namespace = cluster_object.metadata.namespace
+        replicas = cluster_object.spec.mongodb.replicas
 
-        mongo_command = MongoResources.createReplicaReconfigureCommand(cluster_object)
+        reconfigure_command = MongoResources.createReplicaReconfigureCommand(cluster_object)
 
-        exec_response = self._execInPod(0, name, namespace, mongo_command)
+        reconfigure_response = self._execInPod(0, cluster_name, namespace, reconfigure_command)
 
-        logging.debug("Reconfiguring replica, received %s", repr(exec_response))
+        logging.debug("Reconfiguring replica, received %s", repr(reconfigure_response))
 
-        if exec_response["ok"] == 1:
-            logging.info("Reconfigured replica set %s @ ns/%s", name, namespace)
+        if reconfigure_response["ok"] == 1:
+            logging.info("Reconfigured replica set %s @ ns/%s to %s pods", cluster_name, namespace, replicas)
         else:
             raise ValueError("Unexpected response initializing replica set {} @ ns/{}:\n{}"
-                             .format(name, namespace, exec_response))
+                             .format(cluster_name, namespace, reconfigure_response))
 
     def checkReplicaSetOrInitialize(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """
@@ -117,25 +118,26 @@ class MongoService:
         :raise ValueError: In case we receive an unexpected response from Mongo.
         :raise ApiException: In case we receive an unexpected response from Kubernetes.
         """
-        name = cluster_object.metadata.name
+        cluster_name = cluster_object.metadata.name
         namespace = cluster_object.metadata.namespace
+        replicas = cluster_object.spec.mongodb.replicas
 
-        mongo_command = MongoResources.createStatusCommand()
+        create_status_command = MongoResources.createStatusCommand()
 
-        exec_response = self._execInPod(0, name, namespace, mongo_command)
-        logging.debug("Checking replicas, received %s", repr(exec_response))
+        create_status_response = self._execInPod(0, cluster_name, namespace, create_status_command)
+        logging.debug("Checking replicas, received %s", repr(create_status_response))
 
         # If the replica set is not initialized yet, we initialize it
-        if exec_response["ok"] == 0 and exec_response["codeName"] == "NotYetInitialized":
+        if create_status_response["ok"] == 0 and create_status_response["codeName"] == "NotYetInitialized":
             return self.initializeReplicaSet(cluster_object)
 
-        elif exec_response["ok"] == 1:
-            logging.info("The replica set %s @ ns/%s seems to be working properly with %s pods.",
-                         name, namespace, len(exec_response["members"]))
-            if len(exec_response["members"]) != cluster_object.spec.mongodb.replicas:
+        elif create_status_response["ok"] == 1:
+            logging.info("The replica set %s @ ns/%s seems to be working properly with %s/%s pods.",
+                         cluster_name, namespace, len(create_status_response["members"]), replicas)
+            if replicas != len(create_status_response["members"]):
                 self.reconfigureReplicaSet(cluster_object)
         else:
-            raise ValueError("Unexpected response trying to check replicas: %s", repr(exec_response))
+            raise ValueError("Unexpected response trying to check replicas: %s", repr(create_status_response))
 
     def createUsers(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """
@@ -144,12 +146,12 @@ class MongoService:
         :raise ValueError: In case we receive an unexpected response from Mongo.
         :raise ApiException: In case we receive an unexpected response from Kubernetes.
         """
-        name = cluster_object.metadata.name
+        cluster_name = cluster_object.metadata.name
         namespace = cluster_object.metadata.namespace
         replicas = cluster_object.spec.mongodb.replicas
 
-        admin_credentials = self.kubernetes_service.getOperatorAdminSecret(name, namespace)
-        mongo_command = MongoResources.createCreateAdminCommand(admin_credentials)
+        admin_credentials = self.kubernetes_service.getOperatorAdminSecret(cluster_name, namespace)
+        create_admin_command = MongoResources.createCreateAdminCommand(admin_credentials)
 
         logging.info("Creating users for %s pods", replicas)
 
@@ -157,13 +159,13 @@ class MongoService:
             for i in range(replicas):
                 # see tests for examples of these responses.
                 try:
-                    exec_response = self._execInPod(i, name, namespace, mongo_command)
+                    exec_response = self._execInPod(i, cluster_name, namespace, create_admin_command)
                     if "user" in exec_response:
-                        logging.info("Created users for pod %s-%s @ ns/%s", name, i, namespace)
+                        logging.info("Created users for pod %s-%s @ ns/%s", cluster_name, i, namespace)
                         return
 
                     raise ValueError("Unexpected response creating users for pod {}-{} @ ns/{}\n{}"
-                                     .format(name, i, namespace, exec_response))
+                                     .format(cluster_name, i, namespace, exec_response))
 
                 except ValueError as err:
                     err_str = str(err)
@@ -171,7 +173,7 @@ class MongoService:
                     if "couldn't add user: not master" in err_str:
                         # most of the time member 0 is elected master, otherwise we get this error and need to loop through
                         # members until we find the master
-                        logging.info("The user could not be created in pod %s-%s because it's not master.", name, i)
+                        logging.info("The user could not be created in pod %s-%s because it's not master.", cluster_name, i)
                         continue
 
                     if "already exists" in err_str:
@@ -181,8 +183,8 @@ class MongoService:
                     raise
 
             logging.info("Could not create users in any of the %s pods of cluster %s @ ns/%s. We wait %s seconds "
-                         "before retrying.", replicas, name, namespace, self.EXEC_IN_POD_WAIT)
+                         "before retrying.", replicas, cluster_name, namespace, self.EXEC_IN_POD_WAIT)
             sleep(self.EXEC_IN_POD_WAIT)
 
         raise TimeoutError("Could not create users in any of the {} pods of cluster {} @ ns/{}."
-                           .format(replicas, name, namespace))
+                           .format(replicas, cluster_name, namespace))

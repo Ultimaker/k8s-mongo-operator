@@ -19,6 +19,9 @@ class MongoOperator:
         self._sleep_per_run = sleep_per_run
 
     def run_forever(self):
+        """
+        Runs the mongo operator forever (until a kill command is received).
+        """
         checker = ClusterChecker()
         try:
             for _ in range(100):  # TODO: return this to: while True:
@@ -26,11 +29,11 @@ class MongoOperator:
                 try:
                     checker.checkExistingClusters()
                     checker.collectGarbage()
-                    # TODO: checker.streamEvents()
+                    checker.streamEvents()
                 except Exception as e:
                     logging.exception(e)
 
-                logging.info("Waiting %s seconds", self._sleep_per_run)
+                logging.info("Checks done, waiting %s seconds", self._sleep_per_run)
                 sleep(self._sleep_per_run)
         except KeyboardInterrupt:
             logging.info("Application interrupted...")

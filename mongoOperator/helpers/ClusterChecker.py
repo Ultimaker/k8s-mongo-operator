@@ -3,11 +3,13 @@
 # -*- coding: utf-8 -*-
 import logging
 
-from kubernetes.client import V1Service, V1Secret, V1beta1StatefulSet
-from typing import Union, Dict, TypeVar, Callable, Optional
+from kubernetes.watch import Watch
+from typing import Dict, List, Tuple, Optional
 
-from kubernetes.client.rest import ApiException
-
+from mongoOperator.helpers.AdminSecretChecker import AdminSecretChecker
+from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
+from mongoOperator.helpers.ServiceChecker import ServiceChecker
+from mongoOperator.helpers.StatefulSetChecker import StatefulSetChecker
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 from mongoOperator.services.MongoService import MongoService
@@ -18,10 +20,33 @@ class ClusterChecker:
     Manager that periodically checks the status of the MongoDB objects in the cluster.
     """
 
-    kubernetes_service = KubernetesService()
-    mongo_service = MongoService(kubernetes_service)
+    STREAM_REQUEST_TIMEOUT = 5.0
 
-    CACHED_RESOURCES = {}  # type: Dict[str, str]  # format: {object_kind + object_uid: resource_version}
+    def __init__(self):
+        self.kubernetes_service = KubernetesService()
+        self.mongo_service = MongoService(self.kubernetes_service)
+
+        self.resource_checkers = [
+            ServiceChecker(self.kubernetes_service),
+            StatefulSetChecker(self.kubernetes_service),
+            AdminSecretChecker(self.kubernetes_service),
+        ]  # type: List[BaseResourceChecker]
+
+        self.cluster_versions = {}  # type: Dict[Tuple[str, str], str]  # format: {(cluster_name, namespace): resource_version}
+
+    @staticmethod
+    def _parseConfiguration(cluster_dict: Dict[str, any]) -> Optional[V1MongoClusterConfiguration]:
+        """
+        Tries to parse the given cluster configuration, returning None if the object cannot be parsed.
+        :param cluster_dict: The dictionary containing the configuration.
+        :return: The cluster configuration model, if valid, or None.
+        """
+        try:
+            return V1MongoClusterConfiguration(**cluster_dict)
+        except ValueError as err:
+            meta = cluster_dict.get("metadata", {})
+            logging.error("Could not validate cluster configuration for {} @ ns/{}: {}. The cluster will be ignored."
+                          .format(meta.get("name"), meta.get("namespace"), err))
 
     def checkExistingClusters(self) -> None:
         """
@@ -31,173 +56,62 @@ class ClusterChecker:
         mongo_objects = self.kubernetes_service.listMongoObjects()
         logging.info("Checking %s mongo objects.", len(mongo_objects["items"]))
         for cluster_dict in mongo_objects["items"]:
-            cluster_object = V1MongoClusterConfiguration(**cluster_dict)
-            self.checkCluster(cluster_object)
+            cluster_object = self._parseConfiguration(cluster_dict)
+            if cluster_object:
+                self.checkCluster(cluster_object)
+
+    def streamEvents(self) -> None:
+        """
+        Watches for changes to the mongo objects in Kubernetes and processes any changes immediately.
+        """
+        event_watcher = Watch()
+
+        # start watching from the latest version that we have
+        event_watcher.resource_version = max(self.cluster_versions.values())
+
+        for event in event_watcher.stream(self.kubernetes_service.listMongoObjects, _request_timeout = self.STREAM_REQUEST_TIMEOUT):
+            logging.info("Received event %s", event)
+
+            if event["type"] in ("ADDED", "MODIFIED"):
+                cluster_object = V1MongoClusterConfiguration(**event["object"])
+                if cluster_object:
+                    self.checkCluster(cluster_object)
+                    # we change the resource version manually because of a bug fixed only in a later version of K8s:
+                    # https://github.com/kubernetes-client/python-base/pull/64
+                    event_watcher.resource_version = cluster_object.metadata.resource_version
+                else:
+                    logging.warning("Could not validate cluster object, stopping event watcher.")
+                    event_watcher.stop = True
+            elif event["type"] in ("DELETED",):
+                self.collectGarbage()
+
+            else:
+                logging.warning("Could not parse event, stopping event watcher.")
+                event_watcher.stop = True
 
     def collectGarbage(self) -> None:
-        """Collect garbage."""
-        self._cleanServices()
-        self._cleanStatefulSets()
-        self._cleanSecrets()
+        """
+        Cleans up any resources that are left after a cluster has been removed.
+        """
+        for checker in self.resource_checkers:
+            checker.cleanResources()
 
-    def checkCluster(self, cluster_object: V1MongoClusterConfiguration) -> None:
+    def checkCluster(self, cluster_object: V1MongoClusterConfiguration, force: bool = False) -> None:
         """
         Checks whether the given cluster is configured and updated.
         :param cluster_object: The cluster object from the YAML file.
+        :param force: If this is True, we will re-update the cluster even if it has been checked before.
         """
-        if self.CACHED_RESOURCES.get(cluster_object.metadata.uid) == cluster_object.metadata.resource_version:
+        key = (cluster_object.metadata.name, cluster_object.metadata.namespace)
+        
+        if self.cluster_versions.get(key) == cluster_object.metadata.resource_version and not force:
             logging.debug("Cluster object %s has been checked already in version %s.",
-                          cluster_object.metadata.uid, cluster_object.metadata.resource_version)
+                          key, cluster_object.metadata.resource_version)
             # we still want to check the replicas to make sure everything is working.
             self.mongo_service.checkReplicaSetOrInitialize(cluster_object)
         else:
-            self._checkService(cluster_object)
-            self._checkStatefulSet(cluster_object)
-            self._checkOperatorAdminSecrets(cluster_object)
+            for checker in self.resource_checkers:
+                checker.checkResource(cluster_object)
             self.mongo_service.checkReplicaSetOrInitialize(cluster_object)
             self.mongo_service.createUsers(cluster_object)
-            self.CACHED_RESOURCES[cluster_object.metadata.uid] = cluster_object.metadata.resource_version
-
-    def _checkService(self, cluster_object: V1MongoClusterConfiguration) -> None:
-        """
-        Check and ensure the service is running.
-        :param cluster_object: The cluster object from the YAML file.
-        """
-        name = cluster_object.metadata.name
-        namespace = cluster_object.metadata.namespace
-        try:
-            service = self.kubernetes_service.getService(name, namespace)
-        except ApiException as e:
-            service = None
-            if e.status != 404:
-                raise
-
-        if service:
-            # We update the service to ensure it is up to date.
-            service = self.kubernetes_service.updateService(cluster_object)
-        else:
-            # The service does not exist but should, so we create it.
-            service = self.kubernetes_service.createService(cluster_object)
-
-        # Finally we cache the latest known version of the object.
-        logging.info("Service %s @ %s is version %s", name, namespace, service.metadata.resource_version)
-
-    def _checkOperatorAdminSecrets(self, cluster_object: V1MongoClusterConfiguration) -> None:
-        """
-        Check and ensure the stateful set is running.
-        :param cluster_object: The cluster object from the YAML file.
-        """
-        name = cluster_object.metadata.name
-        namespace = cluster_object.metadata.namespace
-        try:
-            secret = self.kubernetes_service.getOperatorAdminSecret(name, namespace)
-        except ApiException as e:
-            secret = None
-            if e.status != 404:
-                raise
-
-        if secret:
-            # We update the secret to ensure it is up to date.
-            secret = self.kubernetes_service.updateOperatorAdminSecret(cluster_object)
-        else:
-            # The secret does not exist but it should, so we create it.
-            logging.info("Could not find admin secret for {} @ ns/{}. Creating it.".format(name, namespace))
-            secret = self.kubernetes_service.createOperatorAdminSecret(cluster_object)
-            if not secret:
-                raise ValueError("Could not find nor create the admin secret for {} @ ns/{}.".format(name, namespace))
-
-        logging.info("Operator Admin Secret for %s @ ns/%s has version %s", name, namespace,
-                     secret.metadata.resource_version)
-
-    def _checkStatefulSet(self, cluster_object: V1MongoClusterConfiguration) -> None:
-        """
-        Check and ensure the stateful set is running.
-        :param cluster_object: The cluster object from the YAML file.
-        """
-        name = cluster_object.metadata.name
-        namespace = cluster_object.metadata.namespace
-        try:
-            stateful_set = self.kubernetes_service.getStatefulSet(name, namespace)
-        except ApiException as e:
-            stateful_set = None
-            if e.status != 404:
-                raise
-
-        if stateful_set:
-            # We update the stateful set to ensure it is up to date.
-            stateful_set = self.kubernetes_service.updateStatefulSet(cluster_object)
-        else:
-            stateful_set = self.kubernetes_service.createStatefulSet(cluster_object)
-
-        # Finally we cache the latest known version of the object.
-        logging.info("Stateful set %s @ ns/%s is version %s with %s replicas", name, namespace,
-                     stateful_set.metadata.resource_version, stateful_set.status.replicas)
-
-    def _cleanServices(self) -> None:
-        """Clean left-over services."""
-        services = self.kubernetes_service.listAllServicesWithLabels()
-
-        for service in services.items:
-            name = service.metadata.name
-            namespace = service.metadata.namespace
-            try:
-                self.kubernetes_service.getMongoObject(name, namespace)
-            except ApiException as e:
-                if e.status != 404:
-                    raise
-                # The service exists but the Mongo object it belonged to does not, we have to delete it.
-                self.kubernetes_service.deleteService(name, namespace)
-
-    def _cleanStatefulSets(self) -> None:
-        """Clean left-over stateful sets."""
-        stateful_sets = self.kubernetes_service.listAllStatefulSetsWithLabels()
-
-        for stateful_set in stateful_sets.items:
-            name = stateful_set.metadata.name
-            namespace = stateful_set.metadata.namespace
-            try:
-                self.kubernetes_service.getMongoObject(name, namespace)
-            except ApiException as e:
-                if e .status != 404:
-                    raise
-                # The stateful set exists but the Mongo object is belonged to does not, we have to delete it.
-                self.kubernetes_service.deleteStatefulSet(name, namespace)
-
-    def _cleanSecrets(self) -> None:
-        """Clean left-over secrets."""
-        secrets = self.kubernetes_service.listAllSecretsWithLabels()
-
-        for secret in secrets.items:
-            secret_name = secret.metadata.name
-            namespace = secret.metadata.namespace
-            try:
-                cluster_name = self.kubernetes_service.getClusterFromOperatorAdminSecret(secret_name)
-                self.kubernetes_service.getMongoObject(cluster_name, namespace)
-            except ApiException as e:
-                if e.status != 404:
-                    raise
-                # The secret exists but the Mongo object is belonged to does not, we have to delete it.
-                self.kubernetes_service.deleteSecret(secret_name, namespace)
-
-    def _isCachedResource(self, resource: Union[V1Service, V1Secret, V1beta1StatefulSet, V1MongoClusterConfiguration]
-                          ) -> bool:
-        """
-        Check if we have cached the specific version of the given resource locally.
-        This limits the amount of calls to the Kubernetes API.
-        :param resource: Kubernetes cluster resource to check cache for.
-        :return: True if cached, False otherwise.
-        """
-        uid = resource.kind + resource.metadata.uid
-        version = resource.metadata.resource_version
-        return self.CACHED_RESOURCES.get(uid) == version
-
-    def _cacheResource(self, resource: Union[V1Service, V1Secret, V1beta1StatefulSet, V1MongoClusterConfiguration]
-                       ) -> None:
-        """
-        Cache a resource by version locally.
-        This limits the amount of calls to the Kubernetes API.
-        :param resource: Kubernetes cluster resource to cache.
-        """
-        uid = resource.kind + resource.metadata.uid
-        version = resource.metadata.resource_version
-        self.CACHED_RESOURCES[uid] = version
+            self.cluster_versions[key] = cluster_object.metadata.resource_version
