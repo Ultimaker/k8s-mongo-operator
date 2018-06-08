@@ -96,15 +96,16 @@ class MongoService:
 
         exec_response = self._execInPod(0, name, namespace, mongo_command)
         logging.debug("Checking replicas, received %s", repr(exec_response))
+        result = MongoResources.parseMongoResponse(exec_response)
 
         # If the replica set is not initialized yet, we initialize it
-        if '"ok" : 0,' in exec_response and '"codeName" : "NotYetInitialized"' in exec_response:
+        if result["ok"] == 0 and result["codeName"] == "NotYetInitialized":
             return self.initializeReplicaSet(cluster_object)
 
         # If we can get the replica set status without authenticating as the admin user first, we create the users
-        elif '"ok" : 1,' in exec_response:
-            # TODO: Parse this response, we may need to change the number of replicas.
-            logging.info("The replica set %s @ ns/%s seems to be working properly.", name, namespace)
+        elif result["ok"] == 1:
+            logging.info("The replica set %s @ ns/%s seems to be working properly with %s pods.",
+                         name, namespace, len(result["members"]))
             return
 
         raise ValueError("Unexpected response trying to check replicas: %s", repr(exec_response))

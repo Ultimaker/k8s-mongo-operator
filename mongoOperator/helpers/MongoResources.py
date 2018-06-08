@@ -2,8 +2,9 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import json
+import re
 from base64 import b64decode
-from typing import List
+from typing import List, Dict
 
 from kubernetes import client
 
@@ -82,3 +83,30 @@ class MongoResources:
         :return: The command to be sent to MongoDB.
         """
         return "rs.status()"
+
+    @classmethod
+    def parseMongoResponse(cls, exec_response: str) -> Dict[str, any]:
+        """
+        Parses a response from the MongoDB daemon. See `tests/fixtures/mongo_responses` for some examples.
+        :param exec_response: The response from Mongo.
+        :return: The JSON object found in the response.
+        :raise ValueError: If no JSON object was found.
+        """
+        json_search = re.search(r"^[^{}]+({[\s\S]*})\s+$", exec_response)
+        if json_search:
+            clean_json = json_search.group(1)
+            clean_json = re.sub("Timestamp\((\d+), 1\)", r"\1", clean_json)
+            clean_json = re.sub("BinData\(0,(.+)\)", r"\1", clean_json)
+            clean_json = re.sub("NumberLong\((\d+)\)", r"\1", clean_json)
+            clean_json = re.sub("ISODate\((\S+)\)", r"\1", clean_json)
+            return json.loads(clean_json)
+
+        exception_search = re.search(r"exception: ([^\n]+)", exec_response)
+        if exception_search:
+            raise ValueError(exception_search.group(1))
+
+        error_search = re.search(r"Error: (.+)", exec_response)
+        if error_search:
+            raise ValueError(error_search.group(1))
+
+        raise ValueError("Cannot parse MongoDB status response: {}".format(exec_response))
