@@ -67,7 +67,8 @@ class ClusterChecker:
         event_watcher = Watch()
 
         # start watching from the latest version that we have
-        event_watcher.resource_version = max(self.cluster_versions.values())
+        if self.cluster_versions:
+            event_watcher.resource_version = max(self.cluster_versions.values())
 
         for event in event_watcher.stream(self.kubernetes_service.listMongoObjects, _request_timeout = self.STREAM_REQUEST_TIMEOUT):
             logging.info("Received event %s", event)
