@@ -137,7 +137,7 @@ class MongoService:
             if replicas != len(create_status_response["members"]):
                 self.reconfigureReplicaSet(cluster_object)
         else:
-            raise ValueError("Unexpected response trying to check replicas: %s", repr(create_status_response))
+            raise ValueError("Unexpected response trying to check replicas: '{}'".format(repr(create_status_response)))
 
     def createUsers(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """

@@ -107,7 +107,7 @@ class MongoResources:
             try:
                 return json.loads(clean_json)
             except JSONDecodeError as err:
-                raise ValueError("Cannot parse JSON because of error {}:\n{}".format(err, clean_json))
+                raise ValueError("Cannot parse JSON because of error {}:\n{}".format(err, repr(clean_json)))
 
         exception_search = re.search(r"exception: ([^\n]+)", exec_response)
         if exception_search:
@@ -117,7 +117,7 @@ class MongoResources:
         if error_search:
             raise ValueError(error_search.group(1).strip(": "))
 
-        raise ValueError("Cannot parse MongoDB status response: {}".format(exec_response))
+        raise ValueError("Cannot parse MongoDB status response: {}".format(repr(exec_response)))
 
     @classmethod
     def _createReplicaConfig(cls, cluster_object) -> Dict[str, any]:

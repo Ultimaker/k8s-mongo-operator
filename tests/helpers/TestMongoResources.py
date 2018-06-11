@@ -7,6 +7,8 @@ from mongoOperator.helpers.MongoResources import MongoResources
 
 
 class TestMongoResources(TestCase):
+    # note: most methods are tested in TestMongoService.py
+
     def test_parseMongoResponse_ok(self):
         with open("tests/fixtures/mongo_responses/replica-status-ok.txt") as f:
             response = MongoResources.parseMongoResponse(f.read())
@@ -97,6 +99,17 @@ class TestMongoResources(TestCase):
             with self.assertRaises(ValueError) as context:
                 MongoResources.parseMongoResponse(f.read())
         self.assertEqual("connect failed", str(context.exception))
+
+    def test_parseMongoResponse_empty(self):
+        with self.assertRaises(ValueError) as context:
+            MongoResources.parseMongoResponse("")
+        self.assertEqual("Cannot parse MongoDB status response: ''", str(context.exception))
+
+    def test_parseMongoResponse_bad_json(self):
+        with open("tests/fixtures/mongo_responses/replica-status-ok.txt") as f:
+            with self.assertRaises(ValueError) as context:
+                MongoResources.parseMongoResponse(f.read().replace("Timestamp", "TimeStamp"))
+        self.assertIn("Cannot parse JSON because of error", str(context.exception))
 
     def test_parseMongoResponse_user_created(self):
         with open("tests/fixtures/mongo_responses/createUser-ok.txt") as f:

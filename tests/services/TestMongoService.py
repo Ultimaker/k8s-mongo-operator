@@ -236,8 +236,8 @@ class TestMongoService(TestCase):
         self.assertEquals(expected_calls, self.kubernetes_service.mock_calls)
 
     def test_checkReplicaSetOrInitialize_ValueError(self):
-        self.kubernetes_service.execInPod.return_value = \
-            self._getFixture("replica-status-error").replace("connect failed", "unknown error")
+        response = self._getFixture("replica-status-ok").replace('"ok" : 1', '"ok" : 2')
+        self.kubernetes_service.execInPod.return_value = response
 
         with self.assertRaises(ValueError) as context:
             self.service.checkReplicaSetOrInitialize(self.cluster_object)
@@ -246,7 +246,7 @@ class TestMongoService(TestCase):
             'mongodb', 'mongo-cluster-0', 'default', ['mongo', 'localhost:27017/admin', '--eval', 'rs.status()']
         )]
         self.assertEquals(expected_calls, self.kubernetes_service.mock_calls)
-        self.assertEquals("unknown error", str(context.exception))
+        self.assertIn("Unexpected response trying to check replicas: ", str(context.exception))
 
     def test_createUsers_ok(self):
         self.kubernetes_service.execInPod.return_value = self._getFixture("createUser-ok")
