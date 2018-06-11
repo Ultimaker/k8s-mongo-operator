@@ -18,7 +18,7 @@ RUN echo "unit-test" >> /var/run/secrets/kubernetes.io/serviceaccount/token
 RUN echo "unit-test" >> /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 ADD . .
 RUN ENV_NAME=testing ASYNC_TEST_TIMEOUT=15 coverage run --source="mongoOperator" -m pytest
-RUN coverage report --skip-covered --show-missing  --fail-under=70
+RUN coverage report --skip-covered --show-missing  --fail-under=100
 
 # This is the container build statements that will create the container meant for deployment
 FROM base AS build
