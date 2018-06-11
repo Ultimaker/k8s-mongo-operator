@@ -1,0 +1,14 @@
+MongoDB shell version v3.6.4
+connecting to: mongodb://localhost:27017/admin
+MongoDB server version: 3.6.4
+{
+	"ok" : 1,
+	"operationTime" : Timestamp(1528365094, 1),
+	"$clusterTime" : {
+		"clusterTime" : Timestamp(1528365094, 1),
+		"signature" : {
+			"hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+			"keyId" : NumberLong(0)
+		}
+	}
+}

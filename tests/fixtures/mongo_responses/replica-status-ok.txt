@@ -1,0 +1,102 @@
+MongoDB shell version v3.6.4
+connecting to: mongodb://localhost:27017/admin
+MongoDB server version: 3.6.4
+{
+	"set" : "some-db",
+	"date" : ISODate("2018-06-07T09:13:07.663Z"),
+	"myState" : 1,
+	"term" : NumberLong(1),
+	"heartbeatIntervalMillis" : NumberLong(2000),
+	"optimes" : {
+		"lastCommittedOpTime" : {
+			"ts" : Timestamp(1528362783, 1),
+			"t" : NumberLong(1)
+		},
+		"readConcernMajorityOpTime" : {
+			"ts" : Timestamp(1528362783, 1),
+			"t" : NumberLong(1)
+		},
+		"appliedOpTime" : {
+			"ts" : Timestamp(1528362783, 1),
+			"t" : NumberLong(1)
+		},
+		"durableOpTime" : {
+			"ts" : Timestamp(1528362783, 1),
+			"t" : NumberLong(1)
+		}
+	},
+	"members" : [
+		{
+			"_id" : 0,
+			"name" : "some-db-0.some-db.default.svc.cluster.local:27017",
+			"health" : 1,
+			"state" : 1,
+			"stateStr" : "PRIMARY",
+			"uptime" : 210,
+			"optime" : {
+				"ts" : Timestamp(1528362783, 1),
+				"t" : NumberLong(1)
+			},
+			"optimeDate" : ISODate("2018-06-07T09:13:03Z"),
+			"electionTime" : Timestamp(1528362622, 1),
+			"electionDate" : ISODate("2018-06-07T09:10:22Z"),
+			"configVersion" : 1,
+			"self" : true
+		},
+		{
+			"_id" : 1,
+			"name" : "some-db-1.some-db.default.svc.cluster.local:27017",
+			"health" : 1,
+			"state" : 2,
+			"stateStr" : "SECONDARY",
+			"uptime" : 178,
+			"optime" : {
+				"ts" : Timestamp(1528362783, 1),
+				"t" : NumberLong(1)
+			},
+			"optimeDurable" : {
+				"ts" : Timestamp(1528362783, 1),
+				"t" : NumberLong(1)
+			},
+			"optimeDate" : ISODate("2018-06-07T09:13:03Z"),
+			"optimeDurableDate" : ISODate("2018-06-07T09:13:03Z"),
+			"lastHeartbeat" : ISODate("2018-06-07T09:13:07.162Z"),
+			"lastHeartbeatRecv" : ISODate("2018-06-07T09:13:07.265Z"),
+			"pingMs" : NumberLong(0),
+			"syncingTo" : "some-db-2.some-db.default.svc.cluster.local:27017",
+			"configVersion" : 1
+		},
+		{
+			"_id" : 2,
+			"name" : "some-db-2.some-db.default.svc.cluster.local:27017",
+			"health" : 1,
+			"state" : 2,
+			"stateStr" : "SECONDARY",
+			"uptime" : 178,
+			"optime" : {
+				"ts" : Timestamp(1528362783, 1),
+				"t" : NumberLong(1)
+			},
+			"optimeDurable" : {
+				"ts" : Timestamp(1528362783, 1),
+				"t" : NumberLong(1)
+			},
+			"optimeDate" : ISODate("2018-06-07T09:13:03Z"),
+			"optimeDurableDate" : ISODate("2018-06-07T09:13:03Z"),
+			"lastHeartbeat" : ISODate("2018-06-07T09:13:06.564Z"),
+			"lastHeartbeatRecv" : ISODate("2018-06-07T09:13:06.760Z"),
+			"pingMs" : NumberLong(6),
+			"syncingTo" : "some-db-0.some-db.default.svc.cluster.local:27017",
+			"configVersion" : 1
+		}
+	],
+	"ok" : 1,
+	"operationTime" : Timestamp(1528362783, 1),
+	"$clusterTime" : {
+		"clusterTime" : Timestamp(1528362785, 0),
+		"signature" : {
+			"hash" : BinData(0,"AAAAAAAAAAAAAAAAAAAAAAAAAAA="),
+			"keyId" : NumberLong(0)
+		}
+	}
+}

@@ -1,0 +1,13 @@
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1beta1
+metadata:
+  name: mongo-operator-cluster-role-binding
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: mongo-operator-service-account
+  namespace: default
+roleRef:
+  kind: ClusterRole
+  name: mongo-operator-cluster-role
+  apiGroup: rbac.authorization.k8s.io
