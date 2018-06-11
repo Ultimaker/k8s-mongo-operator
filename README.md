@@ -67,7 +67,7 @@ minikube start
 Then you can run our test script to deploy the operator and execute some end-to-end tests.
 
 ```bash
-./buld-and-deploy-local.sh
+./build-and-deploy-local.sh
 ```
 
 You will also see the operator logs streamed to your console.
