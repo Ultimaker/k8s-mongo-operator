@@ -11,7 +11,7 @@ from kubernetes.client import Configuration, V1Secret, V1ObjectMeta, V1Service, 
     V1ServiceSpec, V1ServicePort, V1DeleteOptions, V1beta1StatefulSet, V1beta1StatefulSetSpec, V1PodSpec, V1Container, \
     V1EnvVar, V1EnvVarSource, V1ObjectFieldSelector, V1ContainerPort, V1VolumeMount, V1ResourceRequirements, \
     V1PersistentVolumeClaim, V1PersistentVolumeClaimSpec, V1PodTemplateSpec, V1beta1CustomResourceDefinitionList, \
-    V1beta1CustomResourceDefinition, V1beta1CustomResourceDefinitionSpec, V1beta1CustomResourceDefinitionNames
+    V1beta1CustomResourceDefinition, V1beta1CustomResourceDefinitionSpec, V1beta1CustomResourceDefinitionNames, V1Status
 from kubernetes.client.rest import ApiException
 
 from mongoOperator.helpers.KubernetesResources import KubernetesResources
@@ -20,6 +20,7 @@ from mongoOperator.services.KubernetesService import KubernetesService
 from tests.test_utils import getExampleClusterDefinition, dict_eq
 
 
+@patch("mongoOperator.services.KubernetesService.sleep", MagicMock())
 @patch("mongoOperator.services.KubernetesService.client")
 class TestKubernetesService(TestCase):
     maxDiff = 10000
@@ -149,6 +150,45 @@ class TestKubernetesService(TestCase):
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.CustomObjectsApi().list_cluster_custom_object.return_value, result)
 
+    def test_listMongoObjects_400(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+
+        item = MagicMock()
+        item.spec.names.plural = "mongos"
+        client_mock.ApiextensionsV1beta1Api.return_value.list_custom_resource_definition.return_value.items = [item]
+        client_mock.CustomObjectsApi.return_value.list_cluster_custom_object.side_effect = ApiException(400)
+
+        with self.assertRaises(ApiException):
+            service.listMongoObjects(param="value")
+
+        expected_calls = [
+            call.ApiextensionsV1beta1Api().list_custom_resource_definition(),
+            call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongos", param='value')
+        ]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+
+    def test_listMongoObjects_404(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+
+        item = MagicMock()
+        item.spec.names.plural = "mongos"
+        client_mock.ApiextensionsV1beta1Api.return_value.list_custom_resource_definition.return_value.items = [item]
+        client_mock.CustomObjectsApi.return_value.list_cluster_custom_object.side_effect = ApiException(404)
+
+        with self.assertRaises(TimeoutError) as context:
+            service.listMongoObjects(param="value")
+
+        expected_calls = [
+            call.ApiextensionsV1beta1Api().list_custom_resource_definition(),
+            call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongos", param='value'),
+            call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongos", param='value'),
+            call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongos", param='value'),
+        ]
+        self.assertEquals(expected_calls, client_mock.mock_calls)
+        self.assertEquals("Could not list the custom mongo objects after 3 retries", str(context.exception))
+
     def test_getMongoObject(self, client_mock):
         service = KubernetesService()
         client_mock.reset_mock()
@@ -229,6 +269,15 @@ class TestKubernetesService(TestCase):
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.CoreV1Api().list_secret_for_all_namespaces.return_value, result)
 
+    def test_getClusterFromOperatorAdminSecret(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+
+        self.assertEqual("my-cluster", service.getClusterFromOperatorAdminSecret("my-cluster-admin-credentials"))
+        self.assertEqual("mongo", service.getClusterFromOperatorAdminSecret("mongo-admin-credentials"))
+        self.assertEqual("", service.getClusterFromOperatorAdminSecret("-admin-credentials"))
+        self.assertEqual([], client_mock.mock_calls)
+
     @patch("mongoOperator.helpers.KubernetesResources.uuid.uuid4", lambda: MagicMock(hex="random-password"))
     def test_createOperatorAdminSecret(self, client_mock):
         service = KubernetesService()
@@ -244,6 +293,22 @@ class TestKubernetesService(TestCase):
 
         self.assertEqual(client_mock.CoreV1Api.return_value.create_namespaced_secret.return_value, result)
 
+    @patch("mongoOperator.helpers.KubernetesResources.KubernetesResources.createRandomPassword", lambda: "secret")
+    def test_updateOperatorAdminSecret(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+
+        client_mock.CoreV1Api.return_value.read_namespaced_secret.return_value = V1Secret(kind="unit")
+
+        expected_body = V1Secret(kind="unit", string_data={"username": "root", "password": "secret"})
+        expected_calls = [
+            call.CoreV1Api().read_namespaced_secret(self.name + "-admin-credentials", self.namespace),
+            call.CoreV1Api().patch_namespaced_secret(self.name + "-admin-credentials", self.namespace, expected_body)
+        ]
+        result = service.updateOperatorAdminSecret(self.cluster_object)
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.CoreV1Api.return_value.patch_namespaced_secret.return_value, result)
+
     def test_deleteOperatorAdminSecret(self, client_mock):
         service = KubernetesService()
         client_mock.reset_mock()
@@ -255,6 +320,15 @@ class TestKubernetesService(TestCase):
         result = service.deleteOperatorAdminSecret(self.name, self.namespace)
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.CoreV1Api.return_value.delete_namespaced_secret.return_value, result)
+
+    def test_getOperatorAdminSecret(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+
+        result = service.getOperatorAdminSecret(self.name, self.namespace)
+        expected_calls = [call.CoreV1Api().read_namespaced_secret(self.name + "-admin-credentials", self.namespace)]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.CoreV1Api().read_namespaced_secret.return_value, result)
 
     def test_getSecret(self, client_mock):
         service = KubernetesService()
@@ -269,7 +343,7 @@ class TestKubernetesService(TestCase):
         service = KubernetesService()
         client_mock.reset_mock()
 
-        secret_data = {"user": "unit-test", "password": "secret"}
+        secret_data = {"username": "unit-test", "password": "secret"}
         expected_body = V1Secret(metadata=self._createMeta("secret-name"), string_data=secret_data)
         result = service.createSecret("secret-name", self.namespace, secret_data)
 
@@ -283,7 +357,7 @@ class TestKubernetesService(TestCase):
         client_mock.CoreV1Api.return_value.create_namespaced_secret.side_effect = ApiException(status=409)
         client_mock.CoreV1Api.return_value.create_namespaced_secret.side_effect.body = "{}"
 
-        secret_data = {"user": "unit-test", "password": "secret"}
+        secret_data = {"username": "unit-test", "password": "secret"}
         result = service.createSecret(self.name, self.namespace, secret_data)
 
         expected_body = V1Secret(metadata=self._createMeta(self.name), string_data=secret_data)
@@ -303,7 +377,7 @@ class TestKubernetesService(TestCase):
 
         client_mock.CoreV1Api.return_value.read_namespaced_secret.return_value = V1Secret(kind="unit")
 
-        secret_data = {"user": "unit-test", "password": "secret"}
+        secret_data = {"username": "unit-test", "password": "secret"}
         expected_body = V1Secret(kind="unit", string_data=secret_data)
         expected_calls = [
             call.CoreV1Api().read_namespaced_secret(self.name, self.namespace),
@@ -377,6 +451,20 @@ class TestKubernetesService(TestCase):
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.CoreV1Api().delete_namespaced_service.return_value, result)
 
+    def test_deleteService_TypeError(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+
+        client_mock.CoreV1Api.return_value.delete_namespaced_service.side_effect = TypeError, V1Status()
+
+        result = service.deleteService(self.name, self.namespace)
+        expected_calls = [
+            call.CoreV1Api().delete_namespaced_service(self.name, self.namespace, V1DeleteOptions()),
+            call.CoreV1Api().delete_namespaced_service(self.name, self.namespace),
+        ]
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(V1Status(), result)
+
     def test_getStatefulSet(self, client_mock):
         service = KubernetesService()
         client_mock.reset_mock()
@@ -416,3 +504,14 @@ class TestKubernetesService(TestCase):
         ]
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.AppsV1beta1Api().delete_namespaced_stateful_set.return_value, result)
+
+    @patch("mongoOperator.services.KubernetesService.stream")
+    def test_execInPod(self, stream_mock, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+        result = service.execInPod("container", "pod_name", self.namespace, "ls")
+        stream_mock.assert_called_once_with(client_mock.CoreV1Api.return_value.connect_get_namespaced_pod_exec,
+                                            'pod_name', 'default', command='ls', container='container',
+                                            stderr=True, stdin=False, stdout=True, tty=False)
+        self.assertEquals(stream_mock.return_value, result)
+        self.assertEquals([], client_mock.mock_calls)

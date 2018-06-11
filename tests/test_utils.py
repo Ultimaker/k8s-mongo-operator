@@ -4,8 +4,8 @@
 import yaml
 
 
-def getExampleClusterDefinition() -> dict:
-    with open("./examples/mongo-3-replicas.yaml") as f:
+def getExampleClusterDefinition(replicas = 3) -> dict:
+    with open("./examples/mongo-{}-replicas.yaml".format(replicas)) as f:
         return yaml.load(f)
 
 

@@ -90,7 +90,8 @@ class KubernetesService:
                              "initialized, we wait %s seconds.", e.reason, self.LIST_CUSTOM_OBJECTS_WAIT)
                 sleep(self.LIST_CUSTOM_OBJECTS_WAIT)
 
-        raise TimeoutError("Could not list the custom mongo objects after %s retries", self.LIST_CUSTOM_OBJECTS_RETRIES)
+        raise TimeoutError("Could not list the custom mongo objects after {} retries"
+                           .format(self.LIST_CUSTOM_OBJECTS_RETRIES))
 
     def getMongoObject(self, name: str, namespace: str) -> V1MongoClusterConfiguration:
         """
