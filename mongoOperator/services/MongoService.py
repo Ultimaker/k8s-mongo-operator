@@ -64,7 +64,7 @@ class MongoService:
                              "starting up. We wait %s seconds before retrying.", e.reason, self.EXEC_IN_POD_WAIT)
             sleep(self.EXEC_IN_POD_WAIT)
 
-        raise TimeoutError("Could not check the replica set after {} retries".format(self.EXEC_IN_POD_RETRIES))
+        raise TimeoutError("Could not check the replica set after {} retries!".format(self.EXEC_IN_POD_RETRIES))
 
     def initializeReplicaSet(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """
@@ -108,7 +108,7 @@ class MongoService:
         if reconfigure_response["ok"] == 1:
             logging.info("Reconfigured replica set %s @ ns/%s to %s pods", cluster_name, namespace, replicas)
         else:
-            raise ValueError("Unexpected response initializing replica set {} @ ns/{}:\n{}"
+            raise ValueError("Unexpected response reconfiguring replica set {} @ ns/{}:\n{}"
                              .format(cluster_name, namespace, reconfigure_response))
 
     def checkReplicaSetOrInitialize(self, cluster_object: V1MongoClusterConfiguration) -> None:
@@ -164,7 +164,7 @@ class MongoService:
                         logging.info("Created users for pod %s-%s @ ns/%s", cluster_name, i, namespace)
                         return
 
-                    raise ValueError("Unexpected response creating users for pod {}-{} @ ns/{}\n{}"
+                    raise ValueError("Unexpected response creating users for pod {}-{} @ ns/{}:\n{}"
                                      .format(cluster_name, i, namespace, exec_response))
 
                 except ValueError as err:

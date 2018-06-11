@@ -99,7 +99,7 @@ class TestMongoResources(TestCase):
         self.assertEqual("connect failed", str(context.exception))
 
     def test_parseMongoResponse_user_created(self):
-        with open("tests/fixtures/mongo_responses/createUsers-ok.txt") as f:
+        with open("tests/fixtures/mongo_responses/createUser-ok.txt") as f:
             response = MongoResources.parseMongoResponse(f.read())
         expected = {"user": "root", "roles": [{"role": "root", "db": "admin"}]}
         self.assertEqual(expected, response)

@@ -20,6 +20,9 @@ class TestV1MongoClusterConfiguration(TestCase):
             self.cluster_dict["spec"]["backups"]["gcs"]["service_account"].pop("valueFrom")
         self.assertEquals(self.cluster_dict, self.cluster_object.to_dict())
 
+    def test_equals(self):
+        self.assertEquals(self.cluster_object, V1MongoClusterConfiguration(**self.cluster_dict))
+
     def test_example_repr(self):
         expected = \
             "V1MongoClusterConfiguration(api_version=operators.ultimaker.com/v1, kind=Mongo, " \
