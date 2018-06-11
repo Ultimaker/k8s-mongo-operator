@@ -66,6 +66,13 @@ class TestBaseResourceChecker(TestCase):
         self.assertEqual([call.getMongoObject('mongo-cluster', 'default')], self.kubernetes_service.mock_calls)
         self.checker.deleteResource.assert_called_once_with('mongo-cluster', 'default')
 
+    def test_cleanResources_error(self):
+        self.kubernetes_service.getMongoObject.side_effect = ApiException(400)
+        self.checker.listResources = MagicMock(return_value=[self.cluster_object])
+        with self.assertRaises(ApiException):
+            self.checker.cleanResources()
+        self.assertEqual([call.getMongoObject('mongo-cluster', 'default')], self.kubernetes_service.mock_calls)
+
     def test_listResources(self):
         with self.assertRaises(NotImplementedError):
             self.checker.listResources()

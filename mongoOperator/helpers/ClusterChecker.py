@@ -43,7 +43,7 @@ class ClusterChecker:
         """
         try:
             return V1MongoClusterConfiguration(**cluster_dict)
-        except ValueError as err:
+        except (ValueError, AttributeError) as err:
             meta = cluster_dict.get("metadata", {})
             logging.error("Could not validate cluster configuration for {} @ ns/{}: {}. The cluster will be ignored."
                           .format(meta.get("name"), meta.get("namespace"), err))
@@ -74,7 +74,7 @@ class ClusterChecker:
             logging.info("Received event %s", event)
 
             if event["type"] in ("ADDED", "MODIFIED"):
-                cluster_object = V1MongoClusterConfiguration(**event["object"])
+                cluster_object = self._parseConfiguration(event["object"])
                 if cluster_object:
                     self.checkCluster(cluster_object)
                     # we change the resource version manually because of a bug fixed only in a later version of K8s:
