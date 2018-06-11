@@ -2,14 +2,18 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
-from contextlib import suppress
+from time import sleep
+from unittest.mock import patch
 
-from typing import Dict, Optional, List
+from kubernetes.client.rest import ApiException
+from kubernetes.stream import stream
+from typing import Dict, Optional
 
 import yaml
 from kubernetes.config import load_incluster_config
 from kubernetes import client
-from kubernetes.client import Configuration, V1DeleteOptions
+from kubernetes.client import Configuration, V1DeleteOptions, V1ServiceList, V1StatefulSetList, V1SecretList, \
+    V1beta1CustomResourceDefinition
 
 from Settings import Settings
 from mongoOperator.helpers.IgnoreIfExists import IgnoreIfExists
@@ -25,6 +29,13 @@ class KubernetesService:
     # Easy definable secret formats.
     OPERATOR_ADMIN_SECRET_FORMAT = "{}-admin-credentials"
 
+    DEFAULT_LABELS = KubernetesResources.createDefaultLabels()
+
+    # after creating a new object definition we can get 404 not found from K8s.
+    # below we can configure how many times we retry and how long we wait in between.
+    LIST_CUSTOM_OBJECTS_RETRIES = 3
+    LIST_CUSTOM_OBJECTS_WAIT = 5.0
+
     def __init__(self):
         # Create Kubernetes config.
         load_incluster_config()
@@ -38,32 +49,51 @@ class KubernetesService:
         self.extensions_api = client.ApiextensionsV1beta1Api(self.api_client)
         self.apps_api = client.AppsV1beta1Api(self.api_client)
 
-    def createMongoObjectDefinition(self) -> None:
+    def createMongoObjectDefinition(self) -> V1beta1CustomResourceDefinition:
         """Create the custom resource definition."""
-        available_crds = {crd.spec.names.plural for crd in
-                          self.extensions_api.list_custom_resource_definition().items}
-        if Settings.CUSTOM_OBJECT_RESOURCE_PLURAL not in available_crds:
-            # Create it if our CRD doesn't exists yet.
-            logging.info("Custom resource definition %s not found in cluster (available: %s), creating it...",
-                         Settings.CUSTOM_OBJECT_RESOURCE_PLURAL, available_crds)
-            with open("mongo_crd.yaml") as f:
-                body = yaml.load(f)
-            self.extensions_api.create_custom_resource_definition(body)
+        available_resources = {crd.spec.names.plural: crd for crd in
+                               self.extensions_api.list_custom_resource_definition().items}
+        if Settings.CUSTOM_OBJECT_RESOURCE_PLURAL in available_resources:
+            return available_resources[Settings.CUSTOM_OBJECT_RESOURCE_PLURAL]
 
-    def listMongoObjects(self, **kwargs) -> List[V1MongoClusterConfiguration]:
+        # Create it if our CRD doesn't exists yet.
+        logging.info("Custom resource definition %s not found in cluster (available: %s), creating it...",
+                     Settings.CUSTOM_OBJECT_RESOURCE_PLURAL, available_resources)
+        with open("mongo_crd.yaml") as f:
+            definition_dict = yaml.load(f)
+        body = KubernetesResources.deserialize(definition_dict, "V1beta1CustomResourceDefinition")
+
+        # issue with kubernetes causes status.condition==null, which raises an exception and breaks the connection.
+        # by ignoring the validation of this field in the client, we can keep the connection open.
+        with patch("kubernetes.client.models.v1beta1_custom_resource_definition_status.V1beta1CustomResourceDefinitionStatus.conditions"):
+            return self.extensions_api.create_custom_resource_definition(body)
+
+    def listMongoObjects(self, **kwargs) -> Dict[str, any]:
         """
         Get all Kubernetes objects of our custom resource type.
         IMPORTANT: Kubernetes uses the :return: value to deserialize the results, so it must be a class name.
         :param kwargs: Additional API flags.
-        :return: object
+        :return: dict(str, object)
         """
-        self.createMongoObjectDefinition()
-        return self.custom_objects_api.list_cluster_custom_object(Settings.CUSTOM_OBJECT_API_GROUP,
-                                                                  Settings.CUSTOM_OBJECT_API_VERSION,
-                                                                  Settings.CUSTOM_OBJECT_RESOURCE_PLURAL,
-                                                                  **kwargs)
+        definition = self.createMongoObjectDefinition()
+        for _ in range(self.LIST_CUSTOM_OBJECTS_RETRIES):
+            try:
+                logging.debug("Listing resources based on definition %s", definition.metadata.uid)
+                return self.custom_objects_api.list_cluster_custom_object(Settings.CUSTOM_OBJECT_API_GROUP,
+                                                                          Settings.CUSTOM_OBJECT_API_VERSION,
+                                                                          Settings.CUSTOM_OBJECT_RESOURCE_PLURAL,
+                                                                          **kwargs)
+            except ApiException as e:
+                if e.status != 404:
+                    raise
+                logging.info("Could not list the custom Mongo objects: %s. The definition is probably being "
+                             "initialized, we wait %s seconds.", e.reason, self.LIST_CUSTOM_OBJECTS_WAIT)
+                sleep(self.LIST_CUSTOM_OBJECTS_WAIT)
 
-    def getMongoObject(self, name: str, namespace: str) -> Optional[V1MongoClusterConfiguration]:
+        raise TimeoutError("Could not list the custom mongo objects after {} retries"
+                           .format(self.LIST_CUSTOM_OBJECTS_RETRIES))
+
+    def getMongoObject(self, name: str, namespace: str) -> V1MongoClusterConfiguration:
         """
         Get a single Kubernetes Mongo object.
         :param name: The name of the object to get.
@@ -76,27 +106,60 @@ class KubernetesService:
                                                                     Settings.CUSTOM_OBJECT_RESOURCE_PLURAL,
                                                                     name)
 
-    def listAllServicesWithLabels(self, label_selector: Dict[str, str] = KubernetesResources.createDefaultLabels())\
-            -> List[client.V1Service]:
+    def listAllServicesWithLabels(self, labels: Dict[str, str] = DEFAULT_LABELS) -> V1ServiceList:
         """Get all services with the given labels."""
+        label_selector = KubernetesResources.createLabelSelector(labels)
+        logging.debug("Getting all services with labels %s", label_selector)
         return self.core_api.list_service_for_all_namespaces(label_selector=label_selector)
 
-    def listAllStatefulSetsWithLabels(self, label_selector: Dict[str, str] = KubernetesResources.createDefaultLabels())\
-            -> List[client.V1StatefulSet]:
+    def listAllStatefulSetsWithLabels(self, labels: Dict[str, str] = DEFAULT_LABELS) -> V1StatefulSetList:
         """Get all stateful sets with the given labels."""
+        label_selector = KubernetesResources.createLabelSelector(labels)
+        logging.debug("Getting all stateful sets with labels %s", label_selector)
         return self.apps_api.list_stateful_set_for_all_namespaces(label_selector=label_selector)
 
-    def listAllSecretsWithLabels(self, label_selector: Dict[str, str] = KubernetesResources.createDefaultLabels())\
-            -> List[client.V1Secret]:
+    def listAllSecretsWithLabels(self, labels: Dict[str, str] = DEFAULT_LABELS) -> V1SecretList:
         """Get al secrets with the given labels."""
+        label_selector = KubernetesResources.createLabelSelector(labels)
+        logging.debug("Getting all secrets with labels %s", label_selector)
         return self.core_api.list_secret_for_all_namespaces(label_selector=label_selector)
+
+    @classmethod
+    def getClusterFromOperatorAdminSecret(cls, secret_name: str) -> str:
+        """
+        Extracts the name of the cluster from the name of the operator admin secret name.
+        :param secret_name: The name of the secret.
+        :return: The name of the cluster.
+        """
+        return secret_name.replace(cls.OPERATOR_ADMIN_SECRET_FORMAT.format(""), "")
 
     def createOperatorAdminSecret(self, cluster_object: V1MongoClusterConfiguration) -> \
             Optional[client.V1Secret]:
-        """Create the operator admin secret."""
+        """
+        Create the operator admin secret.
+        :param cluster_object: The cluster object from the YAML file.
+        """
         secret_data = {"username": "root", "password": KubernetesResources.createRandomPassword()}
         return self.createSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
                                  cluster_object.metadata.namespace, secret_data)
+
+    def updateOperatorAdminSecret(self, cluster_object: V1MongoClusterConfiguration) -> client.V1Secret:
+        """
+        Create the operator admin secret.
+        :param cluster_object: The cluster object from the YAML file.
+        """
+        secret_data = {"username": "root", "password": KubernetesResources.createRandomPassword()}
+        return self.updateSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
+                                 cluster_object.metadata.namespace, secret_data)
+
+    def getOperatorAdminSecret(self, cluster_name: str, namespace: str) -> client.V1Secret:
+        """
+        Retrieves the operator admin secret.
+        :param cluster_name: Name of the cluster.
+        :param namespace: Namespace in which to delete the secret.
+        :return: The deletion status.
+        """
+        return self.getSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_name), namespace)
 
     def deleteOperatorAdminSecret(self, cluster_name: str, namespace: str) -> client.V1Status:
         """
@@ -107,7 +170,7 @@ class KubernetesService:
         """
         return self.deleteSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_name), namespace)
 
-    def getSecret(self, secret_name: str, namespace: str) -> Optional[client.V1Secret]:
+    def getSecret(self, secret_name: str, namespace: str) -> client.V1Secret:
         """
         Retrieves the secret with the given name.
         :param secret_name: The name of the secret.
@@ -130,7 +193,7 @@ class KubernetesService:
         with IgnoreIfExists():
             return self.core_api.create_namespaced_secret(namespace, secret_body)
 
-    def updateSecret(self, secret_name: str, namespace: str, secret_data: Dict[str, str]) -> Optional[client.V1Secret]:
+    def updateSecret(self, secret_name: str, namespace: str, secret_data: Dict[str, str]) -> client.V1Secret:
         """
         Updates the given Kubernetes secret.
         :param secret_name: Unique name of the secret.
@@ -140,6 +203,7 @@ class KubernetesService:
         """
         secret = self.getSecret(secret_name, namespace)
         secret.string_data = secret_data
+        logging.info("Updating secret %s @ ns/%s", secret_name, namespace)
         return self.core_api.patch_namespaced_secret(secret_name, namespace, secret)
 
     def deleteSecret(self, name: str, namespace: str) -> client.V1Status:
@@ -150,9 +214,10 @@ class KubernetesService:
         :return: The deletion status.
         """
         body = V1DeleteOptions()
+        logging.info("Deleting secret %s @ ns/%s.", name, namespace)
         return self.core_api.delete_namespaced_secret(name, namespace, body)
 
-    def getService(self, name: str, namespace: str) -> Optional[client.V1Service]:
+    def getService(self, name: str, namespace: str) -> client.V1Service:
         """
         Gets an existing service from the cluster.
         :param name: The name of the service to get.
@@ -161,7 +226,7 @@ class KubernetesService:
         """
         return self.core_api.read_namespaced_service(name, namespace)
 
-    def createService(self, cluster_object: V1MongoClusterConfiguration) -> client.V1Service:
+    def createService(self, cluster_object: V1MongoClusterConfiguration) -> Optional[client.V1Service]:
         """
         Creates the given cluster.
         :param cluster_object: The cluster object from the YAML file.
@@ -169,6 +234,7 @@ class KubernetesService:
         """
         namespace = cluster_object.metadata.namespace
         body = KubernetesResources.createService(cluster_object)
+        logging.info("Creating service %s @ ns/%s.", body.metadata.name, namespace)
         with IgnoreIfExists():
             return self.core_api.create_namespaced_service(namespace, body)
 
@@ -181,6 +247,7 @@ class KubernetesService:
         name = cluster_object.metadata.name
         namespace = cluster_object.metadata.namespace
         body = KubernetesResources.createService(cluster_object)
+        logging.info("Updating service %s @ ns/%s.", name, namespace)
         return self.core_api.patch_namespaced_service(name, namespace, body)
 
     def deleteService(self, name: str, namespace: str) -> client.V1Status:
@@ -190,10 +257,15 @@ class KubernetesService:
         :param namespace: The namespace in which to delete the service.
         :return: The deletion status.
         """
+        logging.info("Deleting service %s @ ns/%s.", name, namespace)
         body = V1DeleteOptions()
-        return self.core_api.delete_namespaced_service(name, namespace, body)
+        try:
+            return self.core_api.delete_namespaced_service(name, namespace, body)
+        except TypeError:
+            # bug in kubernetes client 5.0.0 - body parameter was missing.
+            return self.core_api.delete_namespaced_service(name, namespace)
 
-    def getStatefulSet(self, name: str, namespace: str) -> Optional[client.V1beta1StatefulSet]:
+    def getStatefulSet(self, name: str, namespace: str) -> client.V1beta1StatefulSet:
         """
         Get an existing stateful set from the cluster.
         :param name: The name of the stateful set to get.
@@ -202,7 +274,7 @@ class KubernetesService:
         """
         return self.apps_api.read_namespaced_stateful_set(name, namespace)
 
-    def createStatefulSet(self, cluster_object: V1MongoClusterConfiguration) -> client.V1beta1StatefulSet:
+    def createStatefulSet(self, cluster_object: V1MongoClusterConfiguration) -> Optional[client.V1beta1StatefulSet]:
         """
         Creates the stateful set for the given cluster object.
         :param cluster_object: The cluster object from the YAML file.
@@ -211,6 +283,7 @@ class KubernetesService:
         namespace = cluster_object.metadata.namespace
         body = KubernetesResources.createStatefulSet(cluster_object)
         with IgnoreIfExists():
+            logging.info("Creating stateful set %s @ ns/%s.", body.metadata.name, namespace)
             return self.apps_api.create_namespaced_stateful_set(namespace, body)
 
     def updateStatefulSet(self, cluster_object: V1MongoClusterConfiguration) -> client.V1beta1StatefulSet:
@@ -222,6 +295,7 @@ class KubernetesService:
         name = cluster_object.metadata.name
         namespace = cluster_object.metadata.namespace
         body = KubernetesResources.createStatefulSet(cluster_object)
+        logging.info("Updating stateful set %s @ ns/%s.", name, namespace)
         return self.apps_api.patch_namespaced_stateful_set(name, namespace, body)
 
     def deleteStatefulSet(self, name: str, namespace: str) -> bool:
@@ -232,4 +306,17 @@ class KubernetesService:
         :return: The updated stateful set.
         """
         body = V1DeleteOptions()
+        logging.info("Deleting stateful set %s @ ns/%s.", name, namespace)
         return self.apps_api.delete_namespaced_stateful_set(name, namespace, body)
+
+    def execInPod(self, container, pod_name, namespace, exec_cmd) -> str:
+        """
+        Executes a command in the pod with the given name.
+        :param container: The container name.
+        :param pod_name: The pod name.
+        :param namespace: The pod namespace.
+        :param exec_cmd: The command to execute.
+        :return: The command output.
+        """
+        return stream(self.core_api.connect_get_namespaced_pod_exec, pod_name, namespace, command=exec_cmd,
+                      container=container, stderr=True, stdin=False, stdout=True, tty=False)

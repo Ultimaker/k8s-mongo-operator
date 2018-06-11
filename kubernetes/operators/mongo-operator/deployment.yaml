@@ -23,4 +23,7 @@ spec:
       - image: ultimaker/mongo-operator:local
         imagePullPolicy: Never
         name: mongo-operator
+        env:
+        - name: LOGGING_LEVEL
+          value: INFO
       serviceAccount: mongo-operator-service-account

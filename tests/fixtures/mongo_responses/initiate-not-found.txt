@@ -1,0 +1,9 @@
+MongoDB shell version v3.6.4
+connecting to: mongodb://localhost:27017/admin
+MongoDB server version: 3.6.4
+{
+	"ok" : 0,
+	"errmsg" : "replSetInitiate quorum check failed because not all proposed set members responded affirmatively: some-db-2.some-db.default.svc.cluster.local:27017 failed with Connection refused",
+	"code" : 74,
+	"codeName" : "NodeNotFound"
+}

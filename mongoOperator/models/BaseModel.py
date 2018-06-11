@@ -23,14 +23,17 @@ class BaseModel:
             field = getattr(type(self), field_lower)
             setattr(self, field_lower, field.parse(value))
 
-    def getValues(self) -> Dict[str, any]:
+    def to_dict(self) -> Dict[str, any]:
         """
         Returns a dictionary with the data of each field.
         :return: A dict with the attribute name as key and the attribute value.
         """
         cls = type(self)
         fields = {attr: getattr(cls, attr) for attr in dir(cls)}
-        return {attr: self[attr] for attr, field in fields.items() if isinstance(field, Field)}
+        return {
+            attr: field.to_dict(self[attr]) for attr, field in fields.items()
+            if isinstance(field, Field) and self[attr] is not None
+        }
 
     def __eq__(self, other: any) -> bool:
         """
@@ -38,7 +41,7 @@ class BaseModel:
         :param other: The other object.
         :return: True if they are equal, False otherwise.
         """
-        return type(other) == type(self) and other.getValues() == self.getValues()
+        return type(other) == type(self) and other.to_dict() == self.to_dict()
 
     def __getitem__(self, attr: str) -> any:
         """
@@ -53,5 +56,5 @@ class BaseModel:
         Shows the string-representation of this object.
         :return: The object as string.
         """
-        return "{}()".format(self.__class__.__name__,
-                             ", ".join('{}={}'.format(attr, value) for attr, value in self.getValues().items()))
+        return "{}({})".format(self.__class__.__name__,
+                               ", ".join('{}={}'.format(attr, value) for attr, value in self.to_dict().items()))

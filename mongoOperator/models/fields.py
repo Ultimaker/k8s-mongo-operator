@@ -1,6 +1,7 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
+from typing import Dict
 
 import re
 
@@ -21,6 +22,19 @@ class Field:
     Base field that can be used in the models. This field does no validation whatsoever.
     """
     def parse(self, value: any) -> any:
+        """
+        Parses the field value.
+        :param value: The value to be parsed.
+        :return: The parsed value.
+        """
+        return value
+
+    def to_dict(self, value) -> any:
+        """
+        Returns a the value of this field as it should be set in the model dictionaries.
+        :param value: The value to be converted.
+        :return: The value of this field.
+        """
         return value
 
 
@@ -39,13 +53,16 @@ class EmbeddedField(Field):
     def __init__(self, field_type):
         self.field_type = field_type
 
-    def parse(self, value):
+    def parse(self, value: Dict[str, any]):
         if isinstance(value, dict):
             # K8s API returns pascal cased strings, but we use lower-cased strings with underscores instead.
             values = {pascal_to_lowercase(field_name): field_value
                       for field_name, field_value in value.items()}
             value = self.field_type(**values)
         return super().parse(value)
+
+    def to_dict(self, value) -> Dict[str, any]:
+        return {k: v for k, v in value.to_dict().items() if v is not None}
 
 
 class MongoReplicaCountField(Field):

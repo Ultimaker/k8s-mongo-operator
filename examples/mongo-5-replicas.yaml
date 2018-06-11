@@ -1,11 +1,11 @@
 apiVersion: "operators.ultimaker.com/v1"
 kind: Mongo
 metadata:
-  name: some-db
+  name: mongo-cluster
   namespace: default
 spec:
   mongodb:
-    replicas: 3  # Must be an odd number of minimum 3.
+    replicas: 5  # Must be between 3 and 50
     cpu_limit: "100m"
     memory_limit: "64Mi"
   backups:

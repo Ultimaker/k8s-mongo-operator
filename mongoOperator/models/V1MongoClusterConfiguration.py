@@ -11,7 +11,7 @@ from mongoOperator.models.fields import EmbeddedField, StringField
 
 class V1MongoClusterConfiguration(BaseModel):
     """
-    Model that contains the Mongo cluster configuration. See `examples/mongo.yaml` for an example.
+    Model that contains the Mongo cluster configuration. See `examples/mongo-3-replicas.yaml` for an example.
     """
 
     api_version = StringField()

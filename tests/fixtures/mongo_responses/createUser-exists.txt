@@ -1,0 +1,7 @@
+MongoDB shell version v3.6.4
+connecting to: mongodb://localhost:27017/admin
+MongoDB server version: 3.6.4
+2018-06-07T09:26:40.768+0000 E QUERY    [thread1] Error: couldn't add user: User "root@admin" already exists :
+_getErrorWithCode@src/mongo/shell/utils.js:25:13
+DB.prototype.createUser@src/mongo/shell/db.js:1437:15
+@(shell eval):3:1

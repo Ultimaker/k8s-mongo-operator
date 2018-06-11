@@ -1,6 +1,9 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
+import json
+import logging
+
 from types import TracebackType
 from typing import Type, Optional
 
@@ -21,10 +24,12 @@ class IgnoreIfExists(AbstractContextManager):
     def __exit__(self, exc_type: Optional[Type[Exception]], exc_value: Optional[Exception],
                  traceback: Optional[TracebackType]) -> bool:
         """
-
         :param exc_type: The exception type, if an exception occurred, or None otherwise.
         :param exc_value: The exception, if an exception occurred, or None otherwise.
         :param traceback: The traceback, if an exception occurred, or None otherwise.
         :return: True if the exception should be ignored, False otherwise.
         """
-        return exc_type and isinstance(exc_value, ApiException) and exc_value.status == 409
+        if exc_type and isinstance(exc_value, ApiException) and exc_value.status == 409:
+            error_dict = json.loads(exc_value.body)
+            logging.info("HTTP {code} {status}: {message}.", **error_dict)
+            return True
