@@ -1,6 +1,8 @@
 # k8s-mongo-operator
 MongoDB Operator for Kubernetes.
 
+[![Docker Build Status](https://img.shields.io/docker/build/ultimaker/k8s-mongo-operator.svg)](https://hub.docker.com/r/ultimaker/k8s-mongo-operator)
+
 ## Features
 The following feature are currently available in this operator:
 
