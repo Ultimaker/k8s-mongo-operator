@@ -27,7 +27,7 @@ class TestV1MongoClusterConfiguration(TestCase):
         expected = \
             "V1MongoClusterConfiguration(api_version=operators.ultimaker.com/v1, kind=Mongo, " \
             "metadata={'name': 'mongo-cluster', 'namespace': 'default'}, " \
-            "spec={'backups': {'gcs': {'bucket': 'mongo-backups', 'service_account': " \
+            "spec={'backups': {'cron': '0 * * * *', 'gcs': {'bucket': 'mongo-backups', 'service_account': " \
             "{'name': 'MONGO_SERVICE_ACCOUNT', 'value_from': {'secretKeyRef': " \
             "{'key': 'json', 'name': 'storage-serviceaccount'}}}}}, 'mongodb': " \
             "{'cpu_limit': '100m', 'memory_limit': '64Mi', 'replicas': 3}})"

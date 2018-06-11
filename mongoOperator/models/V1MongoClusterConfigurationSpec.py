@@ -12,5 +12,5 @@ class V1MongoClusterConfigurationSpec(BaseModel):
     """
     Model for the `spec` field of the V1MongoClusterConfiguration.
     """
-    backups = EmbeddedField(V1MongoClusterConfigurationSpecBackups)
-    mongodb = EmbeddedField(V1MongoClusterConfigurationSpecMongoDB)
+    backups = EmbeddedField(V1MongoClusterConfigurationSpecBackups, required=True)
+    mongodb = EmbeddedField(V1MongoClusterConfigurationSpecMongoDB, required=True)

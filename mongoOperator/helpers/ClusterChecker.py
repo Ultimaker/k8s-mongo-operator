@@ -42,8 +42,10 @@ class ClusterChecker:
         :return: The cluster configuration model, if valid, or None.
         """
         try:
-            return V1MongoClusterConfiguration(**cluster_dict)
-        except (ValueError, AttributeError) as err:
+            result = V1MongoClusterConfiguration(**cluster_dict)
+            result.validate()
+            return result
+        except ValueError as err:
             meta = cluster_dict.get("metadata", {})
             logging.error("Could not validate cluster configuration for {} @ ns/{}: {}. The cluster will be ignored."
                           .format(meta.get("name"), meta.get("namespace"), err))

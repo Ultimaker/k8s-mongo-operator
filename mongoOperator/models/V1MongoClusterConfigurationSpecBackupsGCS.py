@@ -12,5 +12,5 @@ class V1MongoClusterConfigurationSpecBackupsGCS(BaseModel):
     """
     Model for the `spec.backups.gcs` field of the V1MongoClusterConfiguration.
     """
-    bucket = StringField()
-    service_account = EmbeddedField(V1EnvVar)
+    bucket = StringField(required=True)
+    service_account = EmbeddedField(V1EnvVar, required=True)
