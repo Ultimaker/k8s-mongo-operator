@@ -22,6 +22,33 @@ Lastly there is a deployment configuration to deploy the actual operator.
 Usually you'd use an image value like `ultimaker/k8s-mongo-operator:master`, or a specific version.
 All available tags can be found on [Docker Hub](https://hub.docker.com/r/ultimaker/k8s-mongo-operator/).
 
+## Creating a Mongo object
+To deploy a new replica set in your cluster using the operator, create a Kubernetes configuration file similar to this:
+
+```yaml
+apiVersion: "operators.ultimaker.com/v1"
+kind: Mongo
+metadata:
+  name: mongo-cluster
+spec:
+  mongodb:
+    replicas: 3
+  backups:
+    cron: "0 * * * *" # hourly
+    gcs:
+      bucket: "ultimaker-mongo-backups"
+      serviceAccount:
+        secretKeyRef:
+          name: "storage-service-account"
+          key: json
+```
+
+Then deploy it to the cluster like any other object:
+
+```bash
+kubectl apply -f mongo.yaml
+```
+
 ## Testing locally
 To run the tests in a local Kubernetes (MiniKube) cluster, we have created a simple test script.
 
