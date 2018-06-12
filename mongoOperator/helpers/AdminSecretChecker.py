@@ -4,14 +4,10 @@
 import os
 from base64 import b64encode
 
-import uuid
-
+from kubernetes.client import V1Secret, V1Status
 from typing import List, Dict
 
-from kubernetes.client import V1Secret, V1Status
-
 from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
-from mongoOperator.helpers.KubernetesResources import KubernetesResources
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 
 
@@ -23,7 +19,7 @@ class AdminSecretChecker(BaseResourceChecker):
 
     T = V1Secret
 
-    # Easy definable secret formats.
+    # Name of the secret for each cluster.
     NAME_FORMAT = "{}-admin-credentials"
 
     @classmethod
