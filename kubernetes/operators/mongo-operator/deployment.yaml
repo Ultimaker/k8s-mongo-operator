@@ -20,7 +20,7 @@ spec:
         app: mongo-operator
     spec:
       containers:
-      - image: ultimaker/mongo-operator:local
+      - image: ultimaker/k8s-mongo-operator:local
         imagePullPolicy: Never
         name: mongo-operator
         env:
