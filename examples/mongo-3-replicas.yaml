@@ -12,7 +12,7 @@ spec:
     cron: "0 * * * *"  # every hour at 0 minutes
     gcs:
       bucket: "ultimaker-mongo-backups"
-      prefix: "backups"
+      prefix: "test-backups"
       serviceAccount:
         secretKeyRef:
           name: storage-serviceaccount

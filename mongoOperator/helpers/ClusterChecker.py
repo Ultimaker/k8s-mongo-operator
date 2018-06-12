@@ -8,7 +8,6 @@ from typing import Dict, List, Tuple, Optional
 
 from mongoOperator.helpers.AdminSecretChecker import AdminSecretChecker
 from mongoOperator.helpers.BackupChecker import BackupChecker
-from mongoOperator.helpers.BackupSecretChecker import BackupSecretChecker
 from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
 from mongoOperator.helpers.ServiceChecker import ServiceChecker
 from mongoOperator.helpers.StatefulSetChecker import StatefulSetChecker
@@ -22,7 +21,7 @@ class ClusterChecker:
     Manager that periodically checks the status of the MongoDB objects in the cluster.
     """
 
-    STREAM_REQUEST_TIMEOUT = 5.0
+    STREAM_REQUEST_TIMEOUT = (15.0, 5.0)  # connect, read timeout
 
     def __init__(self):
         self.kubernetes_service = KubernetesService()
@@ -32,7 +31,6 @@ class ClusterChecker:
             ServiceChecker(self.kubernetes_service),
             StatefulSetChecker(self.kubernetes_service),
             AdminSecretChecker(self.kubernetes_service),
-            BackupSecretChecker(self.kubernetes_service),
         ]  # type: List[BaseResourceChecker]
 
         self.backup_checker = BackupChecker(self.kubernetes_service)
@@ -85,9 +83,6 @@ class ClusterChecker:
                 cluster_object = self._parseConfiguration(event["object"])
                 if cluster_object:
                     self.checkCluster(cluster_object)
-                    # Change the resource version manually because of a bug fixed in a later version of the K8s client:
-                    # https://github.com/kubernetes-client/python-base/pull/64
-                    event_watcher.resource_version = cluster_object.metadata.resource_version
                 else:
                     logging.warning("Could not validate cluster object, stopping event watcher.")
                     event_watcher.stop = True
@@ -97,6 +92,11 @@ class ClusterChecker:
             else:
                 logging.warning("Could not parse event, stopping event watcher.")
                 event_watcher.stop = True
+
+            # Change the resource version manually because of a bug fixed in a later version of the K8s client:
+            # https://github.com/kubernetes-client/python-base/pull/64
+            if isinstance(event.get('object'), dict) and 'resourceVersion' in event['object'].get('metadata', {}):
+                event_watcher.resource_version = event['object']['metadata']['resourceVersion']
 
     def collectGarbage(self) -> None:
         """

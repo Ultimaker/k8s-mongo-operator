@@ -19,7 +19,7 @@ kubectl apply --filename=kubernetes/operators/mongo-operator/deployment.yaml
 # show some details about the deployment
 kubectl describe deploy mongo-operator
 
-# create a secret with the google account credentials
+# create a secret with the google account credentials (if not exists)
 kubectl create secret generic storage-serviceaccount --from-file=json=google_credentials.json
 
 # wait for the pod to startup to retrieve its name

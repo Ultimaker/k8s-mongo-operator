@@ -66,6 +66,9 @@ minikube start
 
 Then you can run our test script to deploy the operator and execute some end-to-end tests.
 
+Note that this script assumes there is a file `google_credentials.json` in this directory that will be uploaded to Kubernetes as the secret for the backups.
+You will need to download this file from Google in order to run the script.
+
 ```bash
 ./build-and-deploy-local.sh
 ```

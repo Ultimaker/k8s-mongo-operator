@@ -29,9 +29,9 @@ class TestV1MongoClusterConfiguration(TestCase):
         expected = \
             "V1MongoClusterConfiguration(api_version=operators.ultimaker.com/v1, kind=Mongo, " \
             "metadata={'name': 'mongo-cluster', 'namespace': 'default'}, " \
-            "spec={'backups': {'cron': '0 * * * *', 'gcs': {'bucket': 'ultimaker-mongo-backups', 'prefix': 'backups'," \
-            " 'service_account': {'secret_key_ref': {'name': 'storage-serviceaccount', 'key': 'json'}}}}, 'mongodb': " \
-            "{'cpu_limit': '100m', 'memory_limit': '64Mi', 'replicas': 3}})"
+            "spec={'backups': {'cron': '0 * * * *', 'gcs': {'bucket': 'ultimaker-mongo-backups', " \
+            "'prefix': 'test-backups', 'service_account': {'secret_key_ref': {'name': 'storage-serviceaccount', " \
+            "'key': 'json'}}}}, 'mongodb': {'cpu_limit': '100m', 'memory_limit': '64Mi', 'replicas': 3}})"
         self.assertEquals(expected, repr(self.cluster_object))
 
     def test_wrong_replicas(self):
