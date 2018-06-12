@@ -53,7 +53,7 @@ class BaseResourceChecker:
             resource = self.createResource(cluster_object)
 
         # Finally we cache the latest known version of the object.
-        logging.info("%s %s @ ns/%s is version %s", self.T.__name__, cluster_object.metadata.name,
+        logging.info("%s for %s @ ns/%s reports version %s", type(self).__name__, cluster_object.metadata.name,
                      cluster_object.metadata.namespace, resource.metadata.resource_version)
         return resource
 

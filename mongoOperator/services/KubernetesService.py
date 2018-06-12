@@ -179,16 +179,18 @@ class KubernetesService:
         """
         return self.core_api.read_namespaced_secret(secret_name, namespace)
 
-    def createSecret(self, secret_name: str, namespace: str, secret_data: Dict[str, str]) -> Optional[client.V1Secret]:
+    def createSecret(self, secret_name: str, namespace: str, secret_data: Dict[str, str],
+                     labels: Optional[Dict[str, str]] = None) -> Optional[client.V1Secret]:
         """
         Creates a new Kubernetes secret.
         :param secret_name: Unique name of the secret.
         :param namespace: Namespace to add secret to.
         :param secret_data: The data to store in the secret as key/value pair dict.
+        :param labels: Optional labels for this secret, defaults to the default labels (see `cls.createDefaultLabels`).
         :return: The secret if successful, None otherwise.
         """
         # Create the secret object.
-        secret_body = KubernetesResources.createSecret(secret_name, namespace, secret_data)
+        secret_body = KubernetesResources.createSecret(secret_name, namespace, secret_data, labels)
         logging.info("Creating secret %s in namespace %s", secret_name, namespace)
         with IgnoreIfExists():
             return self.core_api.create_namespaced_secret(namespace, secret_body)

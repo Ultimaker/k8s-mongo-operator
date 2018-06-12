@@ -14,6 +14,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # This is the container build that will run the "unit tests"
+# TODO: Re-activate tests.
 #FROM base AS tests
 #WORKDIR /usr/src/app
 COPY requirements-testing.txt ./

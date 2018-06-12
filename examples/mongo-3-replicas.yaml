@@ -15,5 +15,5 @@ spec:
       prefix: "backups"
       serviceAccount:
         secretKeyRef:
-          key: json
           name: storage-serviceaccount
+          key: json

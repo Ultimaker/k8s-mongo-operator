@@ -9,6 +9,9 @@ STRING_TO_BOOL_DICT = {"True", "true", "yes", "1"}
 
 
 class Settings:
+    """
+    Class responsible for keeping the application settings.
+    """
     
     # Custom resource (CRD) API config.
     CUSTOM_OBJECT_API_GROUP = "operators.ultimaker.com"
@@ -16,7 +19,7 @@ class Settings:
     CUSTOM_OBJECT_RESOURCE_PLURAL = "mongos"
     
     # Kubernetes config.
-    KUBERNETES_SERVICE_DEBUG = os.getenv("KUBERNETES_SERVICE_DEBUG", "False") in STRING_TO_BOOL_DICT
+    KUBERNETES_SERVICE_DEBUG = os.getenv("KUBERNETES_SERVICE_DEBUG") in STRING_TO_BOOL_DICT
     KUBERNETES_NAMESPACE = os.getenv("KUBERNETES_NAMESPACE", "default")
 
     # Mongo RS config.
@@ -26,6 +29,3 @@ class Settings:
     MONGO_RS_USERNAME = os.getenv("MONGO_RS_USERNAME", "")
     MONGO_RS_PASSWORD = os.getenv("MONGO_RS_PASSWORD", "")
     MONGO_RS_DATABASE = os.getenv("MONGO_RS_DATABASE", "local")
-
-    # Google cloud storage credentials
-    GOOGLE_SERVICE_CREDENTIALS = json.loads(os.getenv("GOOGLE_SERVICE_CREDENTIALS", "{}"))

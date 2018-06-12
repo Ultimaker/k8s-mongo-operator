@@ -1,15 +1,14 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-from typing import List
+import logging
+
+from typing import List, Dict
 
 from kubernetes.client import V1Secret, V1Status
 
 from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
-from mongoOperator.services.KubernetesService import KubernetesService
-
-from Settings import Settings
 
 
 class BackupSecretChecker(BaseResourceChecker):
@@ -29,19 +28,20 @@ class BackupSecretChecker(BaseResourceChecker):
 
     @staticmethod
     def _getSecretData(cluster_object: V1MongoClusterConfiguration) -> Dict[str, str]:
-        return {
-            cluster_object.spec.backups.gcs.service_account.secret_key_ref.key: Settings.GOOGLE_SERVICE_CREDENTIALS
-        }
+        key = cluster_object.spec.backups.gcs.service_account.secret_key_ref["key"]
+        with open("google_credentials.json") as f:
+            secret_data = f.read()
+        return {key: secret_data}
 
     @staticmethod
     def _getSecretName(cluster_object: V1MongoClusterConfiguration) -> str:
-        return cluster_object.spec.backups.gcs.service_account.secret_key_ref.name
+        return cluster_object.spec.backups.gcs.service_account.secret_key_ref["name"]
 
     def listResources(self) -> List[T]:
         return self.kubernetes_service.listAllSecretsWithLabels().items
 
     def getResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
-        return self.kubernetes_service.getSecret(self._getSecretName(cluster_object), namespace)
+        return self.kubernetes_service.getSecret(self._getSecretName(cluster_object), cluster_object.metadata.namespace)
 
     def createResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
         return self.kubernetes_service.createSecret(
@@ -54,4 +54,4 @@ class BackupSecretChecker(BaseResourceChecker):
         )
 
     def deleteResource(self, cluster_name: str, namespace: str) -> V1Status:
-        return self.kubernetes_service.deleteSecret(self._getSecretName(cluster_object), namespace)
+        raise NotImplementedError

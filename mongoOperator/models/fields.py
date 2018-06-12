@@ -75,8 +75,7 @@ class EmbeddedField(Field):
     def parse(self, value: Dict[str, any]):
         if isinstance(value, dict):
             # K8s API returns pascal cased strings, but we use lower-cased strings with underscores instead.
-            values = {pascal_to_lowercase(field_name): field_value
-                      for field_name, field_value in value.items()}
+            values = {pascal_to_lowercase(field_name): field_value for field_name, field_value in value.items()}
             value = self.field_type(**values)
         return super().parse(value)
 

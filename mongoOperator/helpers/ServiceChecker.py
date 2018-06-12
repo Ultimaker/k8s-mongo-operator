@@ -21,7 +21,7 @@ class ServiceChecker(BaseResourceChecker):
         return self.kubernetes_service.listAllServicesWithLabels().items
 
     def getResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
-        return self.kubernetes_service.getService(resource.metadata.name, resource.metadata.namespace)
+        return self.kubernetes_service.getService(cluster_object.metadata.name, cluster_object.metadata.namespace)
 
     def createResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
         return self.kubernetes_service.createService(cluster_object)

@@ -6,7 +6,7 @@ from copy import deepcopy
 import uuid
 from kubernetes.client import V1beta1CustomResourceDefinition, V1ObjectMeta, V1beta1CustomResourceDefinitionSpec, \
     V1beta1CustomResourceDefinitionNames, models as k8s_models
-from typing import Dict
+from typing import Dict, Optional
 
 from kubernetes import client
 
@@ -37,19 +37,21 @@ class KubernetesResources:
         return uuid.uuid4().hex
 
     @classmethod
-    def createSecret(cls, secret_name: str, namespace: str, secret_data: Dict[str, str]) -> client.V1Secret:
+    def createSecret(cls, secret_name: str, namespace: str, secret_data: Dict[str, str],
+                     labels: Optional[Dict[str, str]] = None) -> client.V1Secret:
         """
         Creates a secret object.
         :param secret_name: The name of the secret.
         :param namespace: The name space for the secret.
         :param secret_data: The secret data.
+        :param labels: Optional labels for this secret, defaults to the default labels (see `cls.createDefaultLabels`).
         :return: The secret model object.
         """
         return client.V1Secret(
             metadata=client.V1ObjectMeta(
                 name=secret_name,
                 namespace=namespace,
-                labels=cls.createDefaultLabels(secret_name)
+                labels=cls.createDefaultLabels(secret_name) if labels is None else labels
             ),
             string_data=secret_data,
         )

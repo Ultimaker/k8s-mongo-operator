@@ -29,7 +29,7 @@ class TestClusterChecker(TestCase):
     def test___init__(self):
         self.assertEqual(self.kubernetes_service, self.checker.kubernetes_service)
         self.assertEqual(self.kubernetes_service, self.checker.mongo_service.kubernetes_service)
-        self.assertEqual(3, len(self.checker.resource_checkers), self.checker.resource_checkers)
+        self.assertEqual(4, len(self.checker.resource_checkers), self.checker.resource_checkers)
         self.assertEqual({}, self.checker.cluster_versions)
 
     def test__parseConfiguration_ok(self):
@@ -52,7 +52,8 @@ class TestClusterChecker(TestCase):
         self.assertEqual(expected, self.kubernetes_service.mock_calls)
         self.assertEqual({}, self.checker.cluster_versions)
 
-    def test_checkExistingClusters(self):
+    @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
+    def test_checkExistingClusters(self, backup_mock):
         self.checker.cluster_versions[("mongo-cluster", "default")] = "100"  # checkCluster will assume cached version
         self.kubernetes_service.listMongoObjects.return_value = {"items": [self.cluster_dict]}
         self.kubernetes_service.execInPod.return_value = self._getMongoFixture("replica-status-ok")
@@ -62,6 +63,7 @@ class TestClusterChecker(TestCase):
                     call.execInPod('mongodb', 'mongo-cluster-0', 'default',
                                    ['mongo', 'localhost:27017/admin', '--eval', 'rs.status()'])]
         self.assertEqual(expected, self.kubernetes_service.mock_calls)
+        backup_mock.assert_called_once_with(self.cluster_object)
 
     @patch("mongoOperator.helpers.ClusterChecker.ClusterChecker.checkCluster")
     @patch("kubernetes.watch.watch.Watch.stream")
@@ -114,7 +116,8 @@ class TestClusterChecker(TestCase):
         self.assertEqual([call()] * 3, clean_mock.mock_calls)
         self.assertEqual([], self.kubernetes_service.mock_calls)  # k8s is not called because we mocked everything
 
-    def test_checkCluster_same_version(self):
+    @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
+    def test_checkCluster_same_version(self, backup_mock):
         self.checker.cluster_versions[("mongo-cluster", "default")] = "100"  # checkCluster will assume cached version
         self.kubernetes_service.execInPod.return_value = self._getMongoFixture("replica-status-ok")
         self.checker.checkCluster(self.cluster_object)
@@ -122,10 +125,12 @@ class TestClusterChecker(TestCase):
         expected = [call.execInPod('mongodb', 'mongo-cluster-0', 'default',
                                    ['mongo', 'localhost:27017/admin', '--eval', 'rs.status()'])]
         self.assertEqual(expected, self.kubernetes_service.mock_calls)
+        backup_mock.assert_called_once_with(self.cluster_object)
 
+    @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
     @patch("mongoOperator.helpers.MongoResources.MongoResources.createCreateAdminCommand")
     @patch("mongoOperator.helpers.BaseResourceChecker.BaseResourceChecker.checkResource")
-    def test_checkCluster_new_version(self, check_mock, admin_mock):
+    def test_checkCluster_new_version(self, check_mock, admin_mock, backup_mock):
         self.checker.cluster_versions[("mongo-cluster", "default")] = "50"
         self.kubernetes_service.execInPod.side_effect = (self._getMongoFixture("replica-status-ok"),
                                                          self._getMongoFixture("createUser-exists"))
@@ -138,4 +143,5 @@ class TestClusterChecker(TestCase):
                         'mongo', 'localhost:27017/admin', '--eval', admin_mock.return_value
                     ])]
         self.assertEqual(expected, self.kubernetes_service.mock_calls)
-        self.assertEqual([call(self.cluster_object)] * 3, check_mock.mock_calls)
+        self.assertEqual([call(self.cluster_object)] * 4, check_mock.mock_calls)
+        backup_mock.assert_called_once_with(self.cluster_object)

@@ -16,8 +16,10 @@ class TestV1MongoClusterConfiguration(TestCase):
 
     def test_example(self):
         self.cluster_dict["api_version"] = self.cluster_dict.pop("apiVersion")
-        self.cluster_dict["spec"]["backups"]["gcs"]["service_account"]["value_from"] = \
-            self.cluster_dict["spec"]["backups"]["gcs"]["service_account"].pop("valueFrom")
+        self.cluster_dict["spec"]["backups"]["gcs"]["service_account"] = \
+            self.cluster_dict["spec"]["backups"]["gcs"].pop("serviceAccount")
+        self.cluster_dict["spec"]["backups"]["gcs"]["service_account"]["secret_key_ref"] = \
+            self.cluster_dict["spec"]["backups"]["gcs"]["service_account"].pop("secretKeyRef")
         self.assertEquals(self.cluster_dict, self.cluster_object.to_dict())
 
     def test_equals(self):
@@ -27,9 +29,8 @@ class TestV1MongoClusterConfiguration(TestCase):
         expected = \
             "V1MongoClusterConfiguration(api_version=operators.ultimaker.com/v1, kind=Mongo, " \
             "metadata={'name': 'mongo-cluster', 'namespace': 'default'}, " \
-            "spec={'backups': {'cron': '0 * * * *', 'gcs': {'bucket': 'mongo-backups', 'service_account': " \
-            "{'name': 'MONGO_SERVICE_ACCOUNT', 'value_from': {'secretKeyRef': " \
-            "{'key': 'json', 'name': 'storage-serviceaccount'}}}}}, 'mongodb': " \
+            "spec={'backups': {'cron': '0 * * * *', 'gcs': {'bucket': 'ultimaker-mongo-backups', 'prefix': 'backups'," \
+            " 'service_account': {'secret_key_ref': {'name': 'storage-serviceaccount', 'key': 'json'}}}}, 'mongodb': " \
             "{'cpu_limit': '100m', 'memory_limit': '64Mi', 'replicas': 3}})"
         self.assertEquals(expected, repr(self.cluster_object))
 

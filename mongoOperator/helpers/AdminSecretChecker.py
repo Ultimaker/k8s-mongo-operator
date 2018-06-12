@@ -18,6 +18,8 @@ class AdminSecretChecker(BaseResourceChecker):
 
     T = V1Secret
 
+    # TODO: Move operator admin methods to this class.
+
     @staticmethod
     def getClusterName(resource_name: str) -> str:
         return resource_name.replace(KubernetesService.OPERATOR_ADMIN_SECRET_FORMAT.format(""), "")
@@ -26,7 +28,8 @@ class AdminSecretChecker(BaseResourceChecker):
         return self.kubernetes_service.listAllSecretsWithLabels().items
 
     def getResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
-        return self.kubernetes_service.getOperatorAdminSecret(resource.metadata.name, resource.metadata.namespace)
+        return self.kubernetes_service.getOperatorAdminSecret(cluster_object.metadata.name,
+                                                              cluster_object.metadata.namespace)
 
     def createResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
         return self.kubernetes_service.createOperatorAdminSecret(cluster_object)

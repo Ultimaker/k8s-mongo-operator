@@ -5,7 +5,10 @@ metadata:
   namespace: default
 rules:
 - apiGroups: [""]
-  resources: ["services", "secrets"]
+  resources: ["services"]
+  verbs: ["list", "get", "create", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["secrets"]  # TODO: Remove list access to secrets.
   verbs: ["list", "get", "create", "patch", "delete"]
 - apiGroups: [""]
   resources: ["pods/exec"]
