@@ -23,8 +23,9 @@ class TestServiceChecker(TestCase):
         self.kubernetes_service.listAllServicesWithLabels.assert_called_once_with()
 
     def test_getResource(self):
-        result = self.checker.getResource("cluster-name", "namespace")
-        self.kubernetes_service.getService.assert_called_once_with("cluster-name", "namespace")
+        result = self.checker.getResource(self.cluster_object)
+        self.kubernetes_service.getService.assert_called_once_with(self.cluster_object.metadata.name,
+                                                                   self.cluster_object.metadata.namespace)
         self.assertEqual(self.kubernetes_service.getService.return_value, result)
 
     def test_createResource(self):

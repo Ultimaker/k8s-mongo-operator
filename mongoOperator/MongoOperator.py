@@ -24,12 +24,12 @@ class MongoOperator:
         """
         checker = ClusterChecker()
         try:
-            for _ in range(100):  # TODO: return this to: while True:
+            while True:
                 logging.info("**** Running Cluster Check ****")
                 try:
                     checker.checkExistingClusters()
                     checker.collectGarbage()
-                    checker.streamEvents()
+                    # TODO: Use checker.streamEvents()
                 except Exception as e:
                     logging.exception(e)
 

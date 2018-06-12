@@ -19,7 +19,7 @@ class TestClusterChecker(TestCase):
             self.checker = ClusterChecker()
             self.kubernetes_service = ks.return_value
         self.cluster_dict = getExampleClusterDefinition()
-        self.cluster_dict["metadata"]["resource_version"] = "100"
+        self.cluster_dict["metadata"]["resourceVersion"] = "100"
         self.cluster_object = V1MongoClusterConfiguration(**self.cluster_dict)
 
     def _getMongoFixture(self, name):
@@ -52,7 +52,8 @@ class TestClusterChecker(TestCase):
         self.assertEqual(expected, self.kubernetes_service.mock_calls)
         self.assertEqual({}, self.checker.cluster_versions)
 
-    def test_checkExistingClusters(self):
+    @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
+    def test_checkExistingClusters(self, backup_mock):
         self.checker.cluster_versions[("mongo-cluster", "default")] = "100"  # checkCluster will assume cached version
         self.kubernetes_service.listMongoObjects.return_value = {"items": [self.cluster_dict]}
         self.kubernetes_service.execInPod.return_value = self._getMongoFixture("replica-status-ok")
@@ -62,6 +63,7 @@ class TestClusterChecker(TestCase):
                     call.execInPod('mongodb', 'mongo-cluster-0', 'default',
                                    ['mongo', 'localhost:27017/admin', '--eval', 'rs.status()'])]
         self.assertEqual(expected, self.kubernetes_service.mock_calls)
+        backup_mock.assert_called_once_with(self.cluster_object)
 
     @patch("mongoOperator.helpers.ClusterChecker.ClusterChecker.checkCluster")
     @patch("kubernetes.watch.watch.Watch.stream")
@@ -78,14 +80,16 @@ class TestClusterChecker(TestCase):
 
         self.assertEqual([call(self.cluster_object), call(V1MongoClusterConfiguration(**updated_cluster))],
                          check_mock.mock_calls)
-        stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects, _request_timeout = 5.0)
+        stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects,
+                                            _request_timeout=self.checker.STREAM_REQUEST_TIMEOUT)
 
     @patch("mongoOperator.helpers.ClusterChecker.Watch")
     def test_streamEvents_bad_event(self, watch_mock):
         stream_mock = watch_mock.return_value.stream
         stream_mock.return_value = [{"type": "UNKNOWN", "object": self.cluster_dict}]
         self.checker.streamEvents()
-        stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects, _request_timeout = 5.0)
+        stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects,
+                                            _request_timeout=self.checker.STREAM_REQUEST_TIMEOUT)
         self.assertTrue(watch_mock.return_value.stop)
 
     @patch("mongoOperator.helpers.ClusterChecker.ClusterChecker.collectGarbage")
@@ -94,7 +98,8 @@ class TestClusterChecker(TestCase):
         stream_mock.return_value = [{"type": "DELETED"}]
         self.checker.streamEvents()
         garbage_mock.assert_called_once_with()
-        stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects, _request_timeout = 5.0)
+        stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects,
+                                            _request_timeout = self.checker.STREAM_REQUEST_TIMEOUT)
 
     @patch("mongoOperator.helpers.ClusterChecker.Watch")
     def test_streamEvents_bad_cluster(self, watch_mock):
@@ -102,7 +107,8 @@ class TestClusterChecker(TestCase):
         stream_mock = watch_mock.return_value.stream
         stream_mock.return_value = [{"type": "ADDED", "object": {"thisIsNot": "a_cluster"}}]
         self.checker.streamEvents()
-        stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects, _request_timeout = 5.0)
+        stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects,
+                                            _request_timeout=self.checker.STREAM_REQUEST_TIMEOUT)
         self.assertTrue(watch_mock.return_value.stop)
         self.assertEquals("100", watch_mock.return_value.resource_version)
 
@@ -114,7 +120,8 @@ class TestClusterChecker(TestCase):
         self.assertEqual([call()] * 3, clean_mock.mock_calls)
         self.assertEqual([], self.kubernetes_service.mock_calls)  # k8s is not called because we mocked everything
 
-    def test_checkCluster_same_version(self):
+    @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
+    def test_checkCluster_same_version(self, backup_mock):
         self.checker.cluster_versions[("mongo-cluster", "default")] = "100"  # checkCluster will assume cached version
         self.kubernetes_service.execInPod.return_value = self._getMongoFixture("replica-status-ok")
         self.checker.checkCluster(self.cluster_object)
@@ -122,10 +129,12 @@ class TestClusterChecker(TestCase):
         expected = [call.execInPod('mongodb', 'mongo-cluster-0', 'default',
                                    ['mongo', 'localhost:27017/admin', '--eval', 'rs.status()'])]
         self.assertEqual(expected, self.kubernetes_service.mock_calls)
+        backup_mock.assert_called_once_with(self.cluster_object)
 
+    @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
     @patch("mongoOperator.helpers.MongoResources.MongoResources.createCreateAdminCommand")
     @patch("mongoOperator.helpers.BaseResourceChecker.BaseResourceChecker.checkResource")
-    def test_checkCluster_new_version(self, check_mock, admin_mock):
+    def test_checkCluster_new_version(self, check_mock, admin_mock, backup_mock):
         self.checker.cluster_versions[("mongo-cluster", "default")] = "50"
         self.kubernetes_service.execInPod.side_effect = (self._getMongoFixture("replica-status-ok"),
                                                          self._getMongoFixture("createUser-exists"))
@@ -139,3 +148,4 @@ class TestClusterChecker(TestCase):
                     ])]
         self.assertEqual(expected, self.kubernetes_service.mock_calls)
         self.assertEqual([call(self.cluster_object)] * 3, check_mock.mock_calls)
+        backup_mock.assert_called_once_with(self.cluster_object)

@@ -10,6 +10,8 @@ from typing import List, Dict
 
 from kubernetes import client
 
+from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
+
 
 class MongoResources:
     """
@@ -120,7 +122,7 @@ class MongoResources:
         raise ValueError("Cannot parse MongoDB status response: {}".format(repr(exec_response)))
 
     @classmethod
-    def _createReplicaConfig(cls, cluster_object) -> Dict[str, any]:
+    def _createReplicaConfig(cls, cluster_object: V1MongoClusterConfiguration) -> Dict[str, any]:
         """
         Creates a dict with the replica set configuration for mongo.
         :param cluster_object: The cluster object from the YAML file.

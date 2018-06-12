@@ -269,67 +269,6 @@ class TestKubernetesService(TestCase):
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.CoreV1Api().list_secret_for_all_namespaces.return_value, result)
 
-    def test_getClusterFromOperatorAdminSecret(self, client_mock):
-        service = KubernetesService()
-        client_mock.reset_mock()
-
-        self.assertEqual("my-cluster", service.getClusterFromOperatorAdminSecret("my-cluster-admin-credentials"))
-        self.assertEqual("mongo", service.getClusterFromOperatorAdminSecret("mongo-admin-credentials"))
-        self.assertEqual("", service.getClusterFromOperatorAdminSecret("-admin-credentials"))
-        self.assertEqual([], client_mock.mock_calls)
-
-    @patch("mongoOperator.helpers.KubernetesResources.uuid.uuid4", lambda: MagicMock(hex="random-password"))
-    def test_createOperatorAdminSecret(self, client_mock):
-        service = KubernetesService()
-        client_mock.reset_mock()
-
-        result = service.createOperatorAdminSecret(self.cluster_object)
-        expected_body = V1Secret(
-            metadata=self._createMeta(self.name + "-admin-credentials"),
-            string_data={"password": "random-password", "username": "root"},
-        )
-        self.assertEqual([call.CoreV1Api().create_namespaced_secret(self.namespace, expected_body)],
-                         client_mock.mock_calls)
-
-        self.assertEqual(client_mock.CoreV1Api.return_value.create_namespaced_secret.return_value, result)
-
-    @patch("mongoOperator.helpers.KubernetesResources.KubernetesResources.createRandomPassword", lambda: "secret")
-    def test_updateOperatorAdminSecret(self, client_mock):
-        service = KubernetesService()
-        client_mock.reset_mock()
-
-        client_mock.CoreV1Api.return_value.read_namespaced_secret.return_value = V1Secret(kind="unit")
-
-        expected_body = V1Secret(kind="unit", string_data={"username": "root", "password": "secret"})
-        expected_calls = [
-            call.CoreV1Api().read_namespaced_secret(self.name + "-admin-credentials", self.namespace),
-            call.CoreV1Api().patch_namespaced_secret(self.name + "-admin-credentials", self.namespace, expected_body)
-        ]
-        result = service.updateOperatorAdminSecret(self.cluster_object)
-        self.assertEqual(expected_calls, client_mock.mock_calls)
-        self.assertEqual(client_mock.CoreV1Api.return_value.patch_namespaced_secret.return_value, result)
-
-    def test_deleteOperatorAdminSecret(self, client_mock):
-        service = KubernetesService()
-        client_mock.reset_mock()
-
-        expected_body = V1DeleteOptions()
-        expected_calls = [
-            call.CoreV1Api().delete_namespaced_secret(self.name + "-admin-credentials", self.namespace, expected_body)
-        ]
-        result = service.deleteOperatorAdminSecret(self.name, self.namespace)
-        self.assertEqual(expected_calls, client_mock.mock_calls)
-        self.assertEqual(client_mock.CoreV1Api.return_value.delete_namespaced_secret.return_value, result)
-
-    def test_getOperatorAdminSecret(self, client_mock):
-        service = KubernetesService()
-        client_mock.reset_mock()
-
-        result = service.getOperatorAdminSecret(self.name, self.namespace)
-        expected_calls = [call.CoreV1Api().read_namespaced_secret(self.name + "-admin-credentials", self.namespace)]
-        self.assertEqual(expected_calls, client_mock.mock_calls)
-        self.assertEqual(client_mock.CoreV1Api().read_namespaced_secret.return_value, result)
-
     def test_getSecret(self, client_mock):
         service = KubernetesService()
         client_mock.reset_mock()

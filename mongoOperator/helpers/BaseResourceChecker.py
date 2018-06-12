@@ -38,10 +38,8 @@ class BaseResourceChecker:
         :param cluster_object: The cluster object from the YAML file.
         :return: An instance of the resource.
         """
-        cluster_name = cluster_object.metadata.name
-        namespace = cluster_object.metadata.namespace
         try:
-            resource = self.getResource(cluster_name, namespace)
+            resource = self.getResource(cluster_object)
         except ApiException as e:
             resource = None
             if e.status != 404:
@@ -55,8 +53,8 @@ class BaseResourceChecker:
             resource = self.createResource(cluster_object)
 
         # Finally we cache the latest known version of the object.
-        logging.info("%s %s @ ns/%s is version %s", self.T.__name__, cluster_name, namespace,
-                     resource.metadata.resource_version)
+        logging.info("%s for %s @ ns/%s reports version %s", type(self).__name__, cluster_object.metadata.name,
+                     cluster_object.metadata.namespace, resource.metadata.resource_version)
         return resource
 
     def cleanResources(self) -> None:
@@ -86,11 +84,10 @@ class BaseResourceChecker:
         raise NotImplementedError
 
     @abstractmethod
-    def getResource(self, cluster_name: str, namespace: str) -> T:
+    def getResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
         """
         Retrieves the resource for the given cluster.
-        :param cluster_name: The name of the cluster.
-        :param namespace: The cluster's namespace.
+        :param cluster_object: The cluster object from the YAML file.
         :return: An instance of the resource.
         :raise ApiException(404): If the resource did not exist.
         """

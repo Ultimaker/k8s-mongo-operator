@@ -79,7 +79,7 @@ class TestBaseResourceChecker(TestCase):
 
     def test_getResource(self):
         with self.assertRaises(NotImplementedError):
-            self.checker.getResource("name", "namespace")
+            self.checker.getResource(self.cluster_object)
 
     def test_createResource(self):
         with self.assertRaises(NotImplementedError):

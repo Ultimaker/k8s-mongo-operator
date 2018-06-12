@@ -1,7 +1,15 @@
 # Copyright (c) 2018 Ultimaker B.V.
-FROM python:alpine AS base
+FROM python:3.6-stretch AS base
 WORKDIR /usr/src/app
-RUN apk add --no-cache openssl
+
+# install MongoDB tools
+RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF5059EE73BB4B58712A2291FA4AD5
+RUN echo "deb http://repo.mongodb.org/apt/debian stretch/mongodb-org/3.6 main" | tee /etc/apt/sources.list.d/mongodb-org-3.6.list
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    mongodb-org-tools \
+    mongodb-org-shell
+
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 

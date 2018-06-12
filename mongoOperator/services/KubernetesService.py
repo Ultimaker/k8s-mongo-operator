@@ -26,9 +26,6 @@ class KubernetesService:
     Bundled methods for interacting with the Kubernetes API.
     """
 
-    # Easy definable secret formats.
-    OPERATOR_ADMIN_SECRET_FORMAT = "{}-admin-credentials"
-
     DEFAULT_LABELS = KubernetesResources.createDefaultLabels()
 
     # after creating a new object definition we can get 404 not found from K8s.
@@ -124,52 +121,6 @@ class KubernetesService:
         logging.debug("Getting all secrets with labels %s", label_selector)
         return self.core_api.list_secret_for_all_namespaces(label_selector=label_selector)
 
-    @classmethod
-    def getClusterFromOperatorAdminSecret(cls, secret_name: str) -> str:
-        """
-        Extracts the name of the cluster from the name of the operator admin secret name.
-        :param secret_name: The name of the secret.
-        :return: The name of the cluster.
-        """
-        return secret_name.replace(cls.OPERATOR_ADMIN_SECRET_FORMAT.format(""), "")
-
-    def createOperatorAdminSecret(self, cluster_object: V1MongoClusterConfiguration) -> \
-            Optional[client.V1Secret]:
-        """
-        Create the operator admin secret.
-        :param cluster_object: The cluster object from the YAML file.
-        """
-        secret_data = {"username": "root", "password": KubernetesResources.createRandomPassword()}
-        return self.createSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
-                                 cluster_object.metadata.namespace, secret_data)
-
-    def updateOperatorAdminSecret(self, cluster_object: V1MongoClusterConfiguration) -> client.V1Secret:
-        """
-        Create the operator admin secret.
-        :param cluster_object: The cluster object from the YAML file.
-        """
-        secret_data = {"username": "root", "password": KubernetesResources.createRandomPassword()}
-        return self.updateSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
-                                 cluster_object.metadata.namespace, secret_data)
-
-    def getOperatorAdminSecret(self, cluster_name: str, namespace: str) -> client.V1Secret:
-        """
-        Retrieves the operator admin secret.
-        :param cluster_name: Name of the cluster.
-        :param namespace: Namespace in which to delete the secret.
-        :return: The deletion status.
-        """
-        return self.getSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_name), namespace)
-
-    def deleteOperatorAdminSecret(self, cluster_name: str, namespace: str) -> client.V1Status:
-        """
-        Delete the operator admin secret.
-        :param cluster_name: Name of the cluster.
-        :param namespace: Namespace in which to delete the secret.
-        :return: The deletion status.
-        """
-        return self.deleteSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_name), namespace)
-
     def getSecret(self, secret_name: str, namespace: str) -> client.V1Secret:
         """
         Retrieves the secret with the given name.
@@ -179,16 +130,18 @@ class KubernetesService:
         """
         return self.core_api.read_namespaced_secret(secret_name, namespace)
 
-    def createSecret(self, secret_name: str, namespace: str, secret_data: Dict[str, str]) -> Optional[client.V1Secret]:
+    def createSecret(self, secret_name: str, namespace: str, secret_data: Dict[str, str],
+                     labels: Optional[Dict[str, str]] = None) -> Optional[client.V1Secret]:
         """
         Creates a new Kubernetes secret.
         :param secret_name: Unique name of the secret.
         :param namespace: Namespace to add secret to.
         :param secret_data: The data to store in the secret as key/value pair dict.
+        :param labels: Optional labels for this secret, defaults to the default labels (see `cls.createDefaultLabels`).
         :return: The secret if successful, None otherwise.
         """
         # Create the secret object.
-        secret_body = KubernetesResources.createSecret(secret_name, namespace, secret_data)
+        secret_body = KubernetesResources.createSecret(secret_name, namespace, secret_data, labels)
         logging.info("Creating secret %s in namespace %s", secret_name, namespace)
         with IgnoreIfExists():
             return self.core_api.create_namespaced_secret(namespace, secret_body)

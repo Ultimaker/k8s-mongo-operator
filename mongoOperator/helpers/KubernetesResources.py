@@ -1,14 +1,10 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-from copy import deepcopy
-
-import uuid
-from kubernetes.client import V1beta1CustomResourceDefinition, V1ObjectMeta, V1beta1CustomResourceDefinitionSpec, \
-    V1beta1CustomResourceDefinitionNames, models as k8s_models
-from typing import Dict
 
 from kubernetes import client
+from kubernetes.client import models as k8s_models
+from typing import Dict, Optional
 
 from Settings import Settings
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
@@ -24,28 +20,29 @@ class KubernetesResources:
     MONGO_PORT = 27017
     MONGO_COMMAND = "mongod --replSet {name} --bind_ip 0.0.0.0 --smallfiles --noprealloc"
     MONGO_STORAGE_NAME = "mongo-storage"
+
     STORAGE_SIZE = "30Gi"
     STORAGE_MOUNT_PATH = "/data/db"
 
-    @staticmethod
-    def createRandomPassword() -> str:
-        """Generate a random secure password to use in secrets."""
-        return uuid.uuid4().hex
+    DEFAULT_CPU_LIMIT = "100m"
+    DEFAULT_MEMORY_LIMIT = "64Mi"
 
     @classmethod
-    def createSecret(cls, secret_name: str, namespace: str, secret_data: Dict[str, str]) -> client.V1Secret:
+    def createSecret(cls, secret_name: str, namespace: str, secret_data: Dict[str, str],
+                     labels: Optional[Dict[str, str]] = None) -> client.V1Secret:
         """
         Creates a secret object.
         :param secret_name: The name of the secret.
         :param namespace: The name space for the secret.
         :param secret_data: The secret data.
+        :param labels: Optional labels for this secret, defaults to the default labels (see `cls.createDefaultLabels`).
         :return: The secret model object.
         """
         return client.V1Secret(
             metadata=client.V1ObjectMeta(
                 name=secret_name,
                 namespace=namespace,
-                labels=cls.createDefaultLabels(secret_name)
+                labels=cls.createDefaultLabels(secret_name) if labels is None else labels
             ),
             string_data=secret_data,
         )
@@ -93,13 +90,18 @@ class KubernetesResources:
 
     @classmethod
     def createStatefulSet(cls, cluster_object: V1MongoClusterConfiguration) -> client.V1beta1StatefulSet:
-        
+        """
+        Creates a the stateful set configuration for the given cluster.
+        :param cluster_object: The cluster object from the YAML file.
+        :return: The stateful set object.
+        """
+
         # Parse cluster data object.
         name = cluster_object.metadata.name
         namespace = cluster_object.metadata.namespace
-        replicas = cluster_object.spec['mongodb']['replicas']
-        cpu_limit = cluster_object.spec['mongodb']['cpu_limit']
-        memory_limit = cluster_object.spec['mongodb']['memory_limit']
+        replicas = cluster_object.spec.mongodb.replicas
+        cpu_limit = cluster_object.spec.mongodb.cpu_limit or cls.DEFAULT_CPU_LIMIT
+        memory_limit = cluster_object.spec.mongodb.memory_limit or cls.DEFAULT_MEMORY_LIMIT
 
         # create container
         mongo_container = client.V1Container(

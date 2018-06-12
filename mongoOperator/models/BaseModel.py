@@ -1,6 +1,9 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
+import inspect
+import logging
+
 from typing import Dict
 
 from mongoOperator.models.fields import Field, pascal_to_lowercase
@@ -17,23 +20,37 @@ class BaseModel:
         :param kwargs: The values of the fields in the model.
         :raise AttributeError: If any of the given attributes did not exist.
         """
+        self.fields = dict(inspect.getmembers(type(self), lambda f: isinstance(f, Field)))  # type: Dict[str, Field]
+
         for field_name, value in kwargs.items():
             # K8s API returns pascal cased strings, but we use lower-cased strings with underscores instead.
             field_lower = pascal_to_lowercase(field_name)
-            field = getattr(type(self), field_lower)
-            setattr(self, field_lower, field.parse(value))
+            if field_lower in self.fields:
+                setattr(self, field_lower, self.fields[field_lower].parse(value))
+            else:
+                logging.warning("The model %s does not have the %s field!", type(self), field_lower)
+
+    def validate(self) -> None:
+        """
+        Checks whether this model is valid.
+        """
+        for name, field in self.fields.items():
+            try:
+                field.validate(self[name])
+            except (ValueError, AttributeError) as err:
+                raise ValueError("Error for field {}: {}".format(repr(name), err))
 
     def to_dict(self) -> Dict[str, any]:
         """
         Returns a dictionary with the data of each field.
         :return: A dict with the attribute name as key and the attribute value.
         """
-        cls = type(self)
-        fields = {attr: getattr(cls, attr) for attr in dir(cls)}
-        return {
-            attr: field.to_dict(self[attr]) for attr, field in fields.items()
-            if isinstance(field, Field) and self[attr] is not None
-        }
+        self.validate()
+        result = {}
+        for name, field in self.fields.items():
+            if self[name] is not None:
+                result[name] = field.to_dict(self[name])
+        return result
 
     def __eq__(self, other: any) -> bool:
         """
@@ -49,7 +66,9 @@ class BaseModel:
         :param attr: The attribute name.
         :return: The attribute value.
         """
-        return getattr(self, attr)
+        value = getattr(self, attr)
+        if not isinstance(value, Field):
+            return value
 
     def __repr__(self) -> str:
         """

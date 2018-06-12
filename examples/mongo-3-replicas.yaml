@@ -9,11 +9,11 @@ spec:
     cpu_limit: "100m"
     memory_limit: "64Mi"
   backups:
+    cron: "0 * * * *"  # every hour at 0 minutes
     gcs:
-      bucket: "mongo-backups"
-      service_account:
-        name: MONGO_SERVICE_ACCOUNT
-        valueFrom:
-          secretKeyRef:
-            key: json
-            name: storage-serviceaccount
+      bucket: "ultimaker-mongo-backups"
+      prefix: "test-backups"
+      serviceAccount:
+        secretKeyRef:
+          name: storage-serviceaccount
+          key: json

@@ -20,8 +20,8 @@ class StatefulSetChecker(BaseResourceChecker):
     def listResources(self) -> List[T]:
         return self.kubernetes_service.listAllStatefulSetsWithLabels().items
 
-    def getResource(self, cluster_name: str, namespace: str) -> T:
-        return self.kubernetes_service.getStatefulSet(cluster_name, namespace)
+    def getResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
+        return self.kubernetes_service.getStatefulSet(cluster_object.metadata.name, cluster_object.metadata.namespace)
 
     def createResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
         return self.kubernetes_service.createStatefulSet(cluster_object)

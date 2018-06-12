@@ -7,6 +7,7 @@ from kubernetes.watch import Watch
 from typing import Dict, List, Tuple, Optional
 
 from mongoOperator.helpers.AdminSecretChecker import AdminSecretChecker
+from mongoOperator.helpers.BackupChecker import BackupChecker
 from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
 from mongoOperator.helpers.ServiceChecker import ServiceChecker
 from mongoOperator.helpers.StatefulSetChecker import StatefulSetChecker
@@ -20,7 +21,7 @@ class ClusterChecker:
     Manager that periodically checks the status of the MongoDB objects in the cluster.
     """
 
-    STREAM_REQUEST_TIMEOUT = 5.0
+    STREAM_REQUEST_TIMEOUT = (15.0, 5.0)  # connect, read timeout
 
     def __init__(self):
         self.kubernetes_service = KubernetesService()
@@ -32,6 +33,8 @@ class ClusterChecker:
             AdminSecretChecker(self.kubernetes_service),
         ]  # type: List[BaseResourceChecker]
 
+        self.backup_checker = BackupChecker(self.kubernetes_service)
+
         self.cluster_versions = {}  # type: Dict[Tuple[str, str], str]  # format: {(cluster_name, namespace): resource_version}
 
     @staticmethod
@@ -42,8 +45,10 @@ class ClusterChecker:
         :return: The cluster configuration model, if valid, or None.
         """
         try:
-            return V1MongoClusterConfiguration(**cluster_dict)
-        except (ValueError, AttributeError) as err:
+            result = V1MongoClusterConfiguration(**cluster_dict)
+            result.validate()
+            return result
+        except ValueError as err:
             meta = cluster_dict.get("metadata", {})
             logging.error("Could not validate cluster configuration for {} @ ns/{}: {}. The cluster will be ignored."
                           .format(meta.get("name"), meta.get("namespace"), err))
@@ -70,16 +75,14 @@ class ClusterChecker:
         if self.cluster_versions:
             event_watcher.resource_version = max(self.cluster_versions.values())
 
-        for event in event_watcher.stream(self.kubernetes_service.listMongoObjects, _request_timeout = self.STREAM_REQUEST_TIMEOUT):
+        for event in event_watcher.stream(self.kubernetes_service.listMongoObjects,
+                                          _request_timeout = self.STREAM_REQUEST_TIMEOUT):
             logging.info("Received event %s", event)
 
             if event["type"] in ("ADDED", "MODIFIED"):
                 cluster_object = self._parseConfiguration(event["object"])
                 if cluster_object:
                     self.checkCluster(cluster_object)
-                    # we change the resource version manually because of a bug fixed only in a later version of K8s:
-                    # https://github.com/kubernetes-client/python-base/pull/64
-                    event_watcher.resource_version = cluster_object.metadata.resource_version
                 else:
                     logging.warning("Could not validate cluster object, stopping event watcher.")
                     event_watcher.stop = True
@@ -89,6 +92,11 @@ class ClusterChecker:
             else:
                 logging.warning("Could not parse event, stopping event watcher.")
                 event_watcher.stop = True
+
+            # Change the resource version manually because of a bug fixed in a later version of the K8s client:
+            # https://github.com/kubernetes-client/python-base/pull/64
+            if isinstance(event.get('object'), dict) and 'resourceVersion' in event['object'].get('metadata', {}):
+                event_watcher.resource_version = event['object']['metadata']['resourceVersion']
 
     def collectGarbage(self) -> None:
         """
@@ -116,3 +124,5 @@ class ClusterChecker:
             self.mongo_service.checkReplicaSetOrInitialize(cluster_object)
             self.mongo_service.createUsers(cluster_object)
             self.cluster_versions[key] = cluster_object.metadata.resource_version
+
+        self.backup_checker.backupIfNeeded(cluster_object)
