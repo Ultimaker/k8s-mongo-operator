@@ -29,7 +29,7 @@ class MongoOperator:
                 try:
                     checker.checkExistingClusters()
                     checker.collectGarbage()
-                    checker.streamEvents()
+                    # TODO: Use checker.streamEvents()
                 except Exception as e:
                     logging.exception(e)
 

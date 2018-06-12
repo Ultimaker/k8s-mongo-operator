@@ -22,7 +22,7 @@ class TestMongoOperator(TestCase):
         expected_calls = [
             call(),
             call().checkExistingClusters(), call().collectGarbage(),
-            call().checkExistingClusters(), call().collectGarbage(), call().streamEvents(),
+            call().checkExistingClusters(), call().collectGarbage(),
         ]
         self.assertEqual(expected_calls, checker_mock.mock_calls)
         self.assertEqual([call(0.01), call(0.01)], sleep_mock.mock_calls)
