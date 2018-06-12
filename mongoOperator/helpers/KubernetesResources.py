@@ -1,14 +1,10 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-from copy import deepcopy
-
-import uuid
-from kubernetes.client import V1beta1CustomResourceDefinition, V1ObjectMeta, V1beta1CustomResourceDefinitionSpec, \
-    V1beta1CustomResourceDefinitionNames, models as k8s_models
-from typing import Dict, Optional
 
 from kubernetes import client
+from kubernetes.client import models as k8s_models
+from typing import Dict, Optional
 
 from Settings import Settings
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
@@ -30,11 +26,6 @@ class KubernetesResources:
 
     DEFAULT_CPU_LIMIT = "100m"
     DEFAULT_MEMORY_LIMIT = "64Mi"
-
-    @staticmethod
-    def createRandomPassword() -> str:
-        """Generate a random secure password to use in secrets."""
-        return uuid.uuid4().hex
 
     @classmethod
     def createSecret(cls, secret_name: str, namespace: str, secret_data: Dict[str, str],

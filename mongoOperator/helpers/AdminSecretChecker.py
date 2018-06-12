@@ -1,13 +1,18 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-from typing import List
+import os
+from base64 import b64encode
+
+import uuid
+
+from typing import List, Dict
 
 from kubernetes.client import V1Secret, V1Status
 
 from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
+from mongoOperator.helpers.KubernetesResources import KubernetesResources
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
-from mongoOperator.services.KubernetesService import KubernetesService
 
 
 class AdminSecretChecker(BaseResourceChecker):
@@ -18,24 +23,33 @@ class AdminSecretChecker(BaseResourceChecker):
 
     T = V1Secret
 
-    # TODO: Move operator admin methods to this class.
+    # Easy definable secret formats.
+    NAME_FORMAT = "{}-admin-credentials"
+
+    @classmethod
+    def getClusterName(cls, resource_name: str) -> str:
+        return resource_name.replace(cls.NAME_FORMAT.format(""), "")
 
     @staticmethod
-    def getClusterName(resource_name: str) -> str:
-        return resource_name.replace(KubernetesService.OPERATOR_ADMIN_SECRET_FORMAT.format(""), "")
+    def _generateSecretData() -> Dict[str, str]:
+        """Generates a root user with a random secure password to use in secrets."""
+        return {"username": "root", "password": b64encode(os.urandom(33)).decode()}
 
     def listResources(self) -> List[T]:
         return self.kubernetes_service.listAllSecretsWithLabels().items
 
     def getResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
-        return self.kubernetes_service.getOperatorAdminSecret(cluster_object.metadata.name,
-                                                              cluster_object.metadata.namespace)
+        name = self.NAME_FORMAT.format(cluster_object.metadata.name)
+        return self.kubernetes_service.getSecret(name, cluster_object.metadata.namespace)
 
     def createResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
-        return self.kubernetes_service.createOperatorAdminSecret(cluster_object)
+        name = self.NAME_FORMAT.format(cluster_object.metadata.name)
+        return self.kubernetes_service.createSecret(name, cluster_object.metadata.namespace, self._generateSecretData())
 
     def updateResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
-        return self.kubernetes_service.updateOperatorAdminSecret(cluster_object)
+        name = self.NAME_FORMAT.format(cluster_object.metadata.name)
+        return self.kubernetes_service.updateSecret(name, cluster_object.metadata.namespace, self._generateSecretData())
 
     def deleteResource(self, cluster_name: str, namespace: str) -> V1Status:
-        return self.kubernetes_service.deleteOperatorAdminSecret(cluster_name, namespace)
+        secret_name = self.NAME_FORMAT.format(cluster_name)
+        return self.kubernetes_service.deleteSecret(secret_name, namespace)

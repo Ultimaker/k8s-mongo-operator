@@ -26,9 +26,6 @@ class KubernetesService:
     Bundled methods for interacting with the Kubernetes API.
     """
 
-    # Easy definable secret formats.
-    OPERATOR_ADMIN_SECRET_FORMAT = "{}-admin-credentials"
-
     DEFAULT_LABELS = KubernetesResources.createDefaultLabels()
 
     # after creating a new object definition we can get 404 not found from K8s.
@@ -123,52 +120,6 @@ class KubernetesService:
         label_selector = KubernetesResources.createLabelSelector(labels)
         logging.debug("Getting all secrets with labels %s", label_selector)
         return self.core_api.list_secret_for_all_namespaces(label_selector=label_selector)
-
-    @classmethod
-    def getClusterFromOperatorAdminSecret(cls, secret_name: str) -> str:
-        """
-        Extracts the name of the cluster from the name of the operator admin secret name.
-        :param secret_name: The name of the secret.
-        :return: The name of the cluster.
-        """
-        return secret_name.replace(cls.OPERATOR_ADMIN_SECRET_FORMAT.format(""), "")
-
-    def createOperatorAdminSecret(self, cluster_object: V1MongoClusterConfiguration) -> \
-            Optional[client.V1Secret]:
-        """
-        Create the operator admin secret.
-        :param cluster_object: The cluster object from the YAML file.
-        """
-        secret_data = {"username": "root", "password": KubernetesResources.createRandomPassword()}
-        return self.createSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
-                                 cluster_object.metadata.namespace, secret_data)
-
-    def updateOperatorAdminSecret(self, cluster_object: V1MongoClusterConfiguration) -> client.V1Secret:
-        """
-        Create the operator admin secret.
-        :param cluster_object: The cluster object from the YAML file.
-        """
-        secret_data = {"username": "root", "password": KubernetesResources.createRandomPassword()}
-        return self.updateSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_object.metadata.name),
-                                 cluster_object.metadata.namespace, secret_data)
-
-    def getOperatorAdminSecret(self, cluster_name: str, namespace: str) -> client.V1Secret:
-        """
-        Retrieves the operator admin secret.
-        :param cluster_name: Name of the cluster.
-        :param namespace: Namespace in which to delete the secret.
-        :return: The deletion status.
-        """
-        return self.getSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_name), namespace)
-
-    def deleteOperatorAdminSecret(self, cluster_name: str, namespace: str) -> client.V1Status:
-        """
-        Delete the operator admin secret.
-        :param cluster_name: Name of the cluster.
-        :param namespace: Namespace in which to delete the secret.
-        :return: The deletion status.
-        """
-        return self.deleteSecret(self.OPERATOR_ADMIN_SECRET_FORMAT.format(cluster_name), namespace)
 
     def getSecret(self, secret_name: str, namespace: str) -> client.V1Secret:
         """
