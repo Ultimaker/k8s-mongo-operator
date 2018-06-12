@@ -10,6 +10,14 @@ The following feature are currently available in this operator:
 * Automatically initialize the replica set configuration in the master node.
 * Schedule backups to Google Cloud Storage using a Google service account and `mongodump`.
 
+## Limitations
+The current version has the limitations that shall be addressed in a later version:
+
+- The watch API from Kubernetes is currently not being used, as we want to remain responsive for creating backups in case no events are received. This means:
+  - We use list secret privilege to remove any admin operator secrets that are not used anymore. This is not part of the [best practices](https://kubernetes.io/docs/concepts/configuration/secret/#best-practices).
+  - The solution is probably to listen to events with [`asyncio`](https://engineering.bitnami.com/articles/kubernetes-async-watches.html).
+- Mongo instances are not using SSL certificates yet.
+
 ## Cluster interaction
 Please refer to our [simplified diagram](./docs/architecture.png) to get an overview of the operator interactions with your Kubernetes cluster.
 
