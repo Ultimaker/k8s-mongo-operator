@@ -3,7 +3,11 @@
 # -*- coding: utf-8 -*-
 from unittest import TestCase
 
+from kubernetes.client import V1SecretKeySelector
+
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
+from mongoOperator.models.V1MongoClusterConfigurationSpecMongoDB import V1MongoClusterConfigurationSpecMongoDB
+from mongoOperator.models.V1ServiceAccountRef import V1ServiceAccountRef
 from tests.test_utils import getExampleClusterDefinition
 
 
@@ -22,6 +26,17 @@ class TestV1MongoClusterConfiguration(TestCase):
             self.cluster_dict["spec"]["backups"]["gcs"]["service_account"].pop("secretKeyRef")
         self.assertEquals(self.cluster_dict, self.cluster_object.to_dict())
 
+    def test_non_required_fields(self):
+        cluster_dict = getExampleClusterDefinition(replicas=5)
+        cluster_object = V1MongoClusterConfiguration(**cluster_dict)
+        self.assertEqual(dict(replicas=5), cluster_dict["spec"]["mongodb"])
+        self.assertEqual(V1MongoClusterConfigurationSpecMongoDB(replicas=5), cluster_object.spec.mongodb)
+
+    def test_secret_key_ref(self):
+        service_account = self.cluster_object.spec.backups.gcs.service_account
+        expected = V1ServiceAccountRef(secret_key_ref=V1SecretKeySelector(name="storage-serviceaccount", key="json"))
+        self.assertEqual(expected, service_account)
+
     def test_equals(self):
         self.assertEquals(self.cluster_object, V1MongoClusterConfiguration(**self.cluster_dict))
 
@@ -30,8 +45,9 @@ class TestV1MongoClusterConfiguration(TestCase):
             "V1MongoClusterConfiguration(api_version=operators.ultimaker.com/v1, kind=Mongo, " \
             "metadata={'name': 'mongo-cluster', 'namespace': 'default'}, " \
             "spec={'backups': {'cron': '0 * * * *', 'gcs': {'bucket': 'ultimaker-mongo-backups', " \
-            "'prefix': 'test-backups', 'service_account': {'secret_key_ref': {'name': 'storage-serviceaccount', " \
-            "'key': 'json'}}}}, 'mongodb': {'cpu_limit': '100m', 'memory_limit': '64Mi', 'replicas': 3}})"
+            "'prefix': 'test-backups', 'service_account': {'secret_key_ref': {'key': 'json', " \
+            "'name': 'storage-serviceaccount'}}}}, 'mongodb': {'cpu_limit': '100m', 'memory_limit': '64Mi', " \
+            "'replicas': 3}})"
         self.assertEquals(expected, repr(self.cluster_object))
 
     def test_wrong_replicas(self):

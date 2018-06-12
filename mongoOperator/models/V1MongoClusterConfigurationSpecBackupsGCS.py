@@ -2,10 +2,9 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from kubernetes.client import V1EnvVarSource
-
 from mongoOperator.models.BaseModel import BaseModel
 from mongoOperator.models.fields import StringField, EmbeddedField
+from mongoOperator.models.V1ServiceAccountRef import V1ServiceAccountRef
 
 
 class V1MongoClusterConfigurationSpecBackupsGCS(BaseModel):
@@ -14,4 +13,4 @@ class V1MongoClusterConfigurationSpecBackupsGCS(BaseModel):
     """
     bucket = StringField(required=True)
     prefix = StringField(required=False)
-    service_account = EmbeddedField(V1EnvVarSource, required=True)
+    service_account = EmbeddedField(V1ServiceAccountRef, required=True)

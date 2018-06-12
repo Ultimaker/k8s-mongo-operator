@@ -19,7 +19,7 @@ class TestClusterChecker(TestCase):
             self.checker = ClusterChecker()
             self.kubernetes_service = ks.return_value
         self.cluster_dict = getExampleClusterDefinition()
-        self.cluster_dict["metadata"]["resource_version"] = "100"
+        self.cluster_dict["metadata"]["resourceVersion"] = "100"
         self.cluster_object = V1MongoClusterConfiguration(**self.cluster_dict)
 
     def _getMongoFixture(self, name):
