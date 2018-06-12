@@ -1,6 +1,7 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
+import json
 import os
 
 
@@ -25,3 +26,6 @@ class Settings:
     MONGO_RS_USERNAME = os.getenv("MONGO_RS_USERNAME", "")
     MONGO_RS_PASSWORD = os.getenv("MONGO_RS_PASSWORD", "")
     MONGO_RS_DATABASE = os.getenv("MONGO_RS_DATABASE", "local")
+
+    # Google cloud storage credentials
+    GOOGLE_SERVICE_CREDENTIALS = json.loads(os.getenv("GOOGLE_SERVICE_CREDENTIALS", "{}"))

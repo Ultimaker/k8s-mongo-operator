@@ -14,7 +14,12 @@ kubectl delete deployment mongo-operator 2>/dev/null
 kubectl apply --filename=kubernetes/operators/mongo-operator/service-account.yaml
 kubectl apply --filename=kubernetes/operators/mongo-operator/cluster-role.yaml
 kubectl apply --filename=kubernetes/operators/mongo-operator/cluster-role-binding.yaml
-kubectl apply --filename=kubernetes/operators/mongo-operator/deployment.yaml
+
+# apply the deployment file after replacing the google service credentials with those found in google_credentials.json
+CREDENTIALS="'$(cat google_credentials.json | tr -d "\n")'"
+cat kubernetes/operators/mongo-operator/deployment.yaml | \
+    cat kubernetes/operators/mongo-operator/deployment.yaml | sed s/__GOOGLE_SERVICE_CREDENTIALS__/${CREDENTIALS}/g | \
+    kubectl apply --filename=-
 
 # show some details about the deployment
 kubectl describe deploy mongo-operator

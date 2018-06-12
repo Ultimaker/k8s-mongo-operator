@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple, Optional
 
 from mongoOperator.helpers.AdminSecretChecker import AdminSecretChecker
 from mongoOperator.helpers.BackupChecker import BackupChecker
+from mongoOperator.helpers.BackupSecretChecker import BackupSecretChecker
 from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
 from mongoOperator.helpers.ServiceChecker import ServiceChecker
 from mongoOperator.helpers.StatefulSetChecker import StatefulSetChecker
@@ -31,9 +32,10 @@ class ClusterChecker:
             ServiceChecker(self.kubernetes_service),
             StatefulSetChecker(self.kubernetes_service),
             AdminSecretChecker(self.kubernetes_service),
+            BackupSecretChecker(self.kubernetes_service),
         ]  # type: List[BaseResourceChecker]
 
-        self.backup_checker = BackupChecker()
+        self.backup_checker = BackupChecker(self.kubernetes_service)
 
         self.cluster_versions = {}  # type: Dict[Tuple[str, str], str]  # format: {(cluster_name, namespace): resource_version}
 

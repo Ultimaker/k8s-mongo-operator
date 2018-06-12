@@ -24,8 +24,12 @@ class KubernetesResources:
     MONGO_PORT = 27017
     MONGO_COMMAND = "mongod --replSet {name} --bind_ip 0.0.0.0 --smallfiles --noprealloc"
     MONGO_STORAGE_NAME = "mongo-storage"
+
     STORAGE_SIZE = "30Gi"
     STORAGE_MOUNT_PATH = "/data/db"
+
+    DEFAULT_CPU_LIMIT = "100m"
+    DEFAULT_MEMORY_LIMIT = "64Mi"
 
     @staticmethod
     def createRandomPassword() -> str:
@@ -93,13 +97,18 @@ class KubernetesResources:
 
     @classmethod
     def createStatefulSet(cls, cluster_object: V1MongoClusterConfiguration) -> client.V1beta1StatefulSet:
-        
+        """
+        Creates a the stateful set configuration for the given cluster.
+        :param cluster_object: The cluster object from the YAML file.
+        :return: The stateful set object.
+        """
+
         # Parse cluster data object.
         name = cluster_object.metadata.name
         namespace = cluster_object.metadata.namespace
-        replicas = cluster_object.spec['mongodb']['replicas']
-        cpu_limit = cluster_object.spec['mongodb']['cpu_limit']
-        memory_limit = cluster_object.spec['mongodb']['memory_limit']
+        replicas = cluster_object.spec.mongodb.replicas
+        cpu_limit = cluster_object.spec.mongodb.cpu_limit or cls.DEFAULT_CPU_LIMIT
+        memory_limit = cluster_object.spec.mongodb.memory_limit or cls.DEFAULT_MEMORY_LIMIT
 
         # create container
         mongo_container = client.V1Container(

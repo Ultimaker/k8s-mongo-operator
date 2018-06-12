@@ -2,7 +2,7 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from kubernetes.client import V1EnvVar
+from kubernetes.client import V1EnvVarSource
 
 from mongoOperator.models.BaseModel import BaseModel
 from mongoOperator.models.fields import StringField, EmbeddedField
@@ -13,4 +13,5 @@ class V1MongoClusterConfigurationSpecBackupsGCS(BaseModel):
     Model for the `spec.backups.gcs` field of the V1MongoClusterConfiguration.
     """
     bucket = StringField(required=True)
-    service_account = EmbeddedField(V1EnvVar, required=True)
+    prefix = StringField(required=False)
+    service_account = EmbeddedField(V1EnvVarSource, required=True)

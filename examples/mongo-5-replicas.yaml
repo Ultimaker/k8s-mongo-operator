@@ -6,15 +6,11 @@ metadata:
 spec:
   mongodb:
     replicas: 5  # Must be between 3 and 50
-    cpu_limit: "100m"
-    memory_limit: "64Mi"
   backups:
     cron: "0 * * * *"  # every hour at 0 minutes
     gcs:
       bucket: "mongo-backups"
-      service_account:
-        name: MONGO_SERVICE_ACCOUNT
-        valueFrom:
-          secretKeyRef:
-            key: json
-            name: storage-serviceaccount
+      serviceAccount:
+        secretKeyRef:
+          key: json
+          name: storage-serviceaccount

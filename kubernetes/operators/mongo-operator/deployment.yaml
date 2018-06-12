@@ -26,4 +26,6 @@ spec:
         env:
         - name: LOGGING_LEVEL
           value: INFO
+        - name: GOOGLE_SERVICE_CREDENTIALS
+          value: __GOOGLE_SERVICE_CREDENTIALS__
       serviceAccount: mongo-operator-service-account
