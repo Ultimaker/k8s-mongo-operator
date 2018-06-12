@@ -25,8 +25,8 @@ class AdminSecretChecker(BaseResourceChecker):
     def listResources(self) -> List[T]:
         return self.kubernetes_service.listAllSecretsWithLabels().items
 
-    def getResource(self, cluster_name: str, namespace: str) -> T:
-        return self.kubernetes_service.getOperatorAdminSecret(cluster_name, namespace)
+    def getResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
+        return self.kubernetes_service.getOperatorAdminSecret(resource.metadata.name, resource.metadata.namespace)
 
     def createResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
         return self.kubernetes_service.createOperatorAdminSecret(cluster_object)

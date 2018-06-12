@@ -7,6 +7,7 @@ from kubernetes.watch import Watch
 from typing import Dict, List, Tuple, Optional
 
 from mongoOperator.helpers.AdminSecretChecker import AdminSecretChecker
+from mongoOperator.helpers.BackupChecker import BackupChecker
 from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
 from mongoOperator.helpers.ServiceChecker import ServiceChecker
 from mongoOperator.helpers.StatefulSetChecker import StatefulSetChecker
@@ -31,6 +32,8 @@ class ClusterChecker:
             StatefulSetChecker(self.kubernetes_service),
             AdminSecretChecker(self.kubernetes_service),
         ]  # type: List[BaseResourceChecker]
+
+        self.backup_checker = BackupChecker()
 
         self.cluster_versions = {}  # type: Dict[Tuple[str, str], str]  # format: {(cluster_name, namespace): resource_version}
 
@@ -72,14 +75,15 @@ class ClusterChecker:
         if self.cluster_versions:
             event_watcher.resource_version = max(self.cluster_versions.values())
 
-        for event in event_watcher.stream(self.kubernetes_service.listMongoObjects, _request_timeout = self.STREAM_REQUEST_TIMEOUT):
+        for event in event_watcher.stream(self.kubernetes_service.listMongoObjects,
+                                          _request_timeout = self.STREAM_REQUEST_TIMEOUT):
             logging.info("Received event %s", event)
 
             if event["type"] in ("ADDED", "MODIFIED"):
                 cluster_object = self._parseConfiguration(event["object"])
                 if cluster_object:
                     self.checkCluster(cluster_object)
-                    # we change the resource version manually because of a bug fixed only in a later version of K8s:
+                    # Change the resource version manually because of a bug fixed in a later version of the K8s client:
                     # https://github.com/kubernetes-client/python-base/pull/64
                     event_watcher.resource_version = cluster_object.metadata.resource_version
                 else:
@@ -118,3 +122,5 @@ class ClusterChecker:
             self.mongo_service.checkReplicaSetOrInitialize(cluster_object)
             self.mongo_service.createUsers(cluster_object)
             self.cluster_versions[key] = cluster_object.metadata.resource_version
+
+        self.backup_checker.backupIfNeeded(cluster_object)

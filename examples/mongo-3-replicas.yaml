@@ -6,12 +6,14 @@ metadata:
 spec:
   mongodb:
     replicas: 3  # Must be between 3 and 50
+    # TODO: below fields are optional
     cpu_limit: "100m"
     memory_limit: "64Mi"
   backups:
     cron: "0 * * * *"  # every hour at 0 minutes
     gcs:
-      bucket: "mongo-backups"
+      bucket: "ultimaker-mongo-backups"
+      #TODO: Rename service_account to serviceAccount, remove name and valueFrom.
       service_account:
         name: MONGO_SERVICE_ACCOUNT
         valueFrom:
