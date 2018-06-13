@@ -142,7 +142,7 @@ class TestClusterChecker(TestCase):
         self.assertEqual({("mongo-cluster", "default"): "100"}, self.checker.cluster_versions)
         expected = [call.execInPod('mongodb', 'mongo-cluster-0', 'default',
                                    ['mongo', 'localhost:27017/admin', '--eval', 'rs.status()']),
-                    call.getOperatorAdminSecret('mongo-cluster', 'default'),
+                    call.getSecret('mongo-cluster-admin-credentials', 'default'),
                     call.execInPod('mongodb', 'mongo-cluster-0', 'default', [
                         'mongo', 'localhost:27017/admin', '--eval', admin_mock.return_value
                     ])]

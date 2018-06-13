@@ -26,6 +26,10 @@ class AdminSecretChecker(BaseResourceChecker):
     def getClusterName(cls, resource_name: str) -> str:
         return resource_name.replace(cls.NAME_FORMAT.format(""), "")
 
+    @classmethod
+    def getSecretName(cls, cluster_name: str) -> str:
+        return cls.NAME_FORMAT.format(cluster_name)
+
     @staticmethod
     def _generateSecretData() -> Dict[str, str]:
         """Generates a root user with a random secure password to use in secrets."""
@@ -35,17 +39,17 @@ class AdminSecretChecker(BaseResourceChecker):
         return self.kubernetes_service.listAllSecretsWithLabels().items
 
     def getResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
-        name = self.NAME_FORMAT.format(cluster_object.metadata.name)
+        name = self.getSecretName(cluster_object.metadata.name)
         return self.kubernetes_service.getSecret(name, cluster_object.metadata.namespace)
 
     def createResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
-        name = self.NAME_FORMAT.format(cluster_object.metadata.name)
+        name = self.getSecretName(cluster_object.metadata.name)
         return self.kubernetes_service.createSecret(name, cluster_object.metadata.namespace, self._generateSecretData())
 
     def updateResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
-        name = self.NAME_FORMAT.format(cluster_object.metadata.name)
+        name = self.getSecretName(cluster_object.metadata.name)
         return self.kubernetes_service.updateSecret(name, cluster_object.metadata.namespace, self._generateSecretData())
 
     def deleteResource(self, cluster_name: str, namespace: str) -> V1Status:
-        secret_name = self.NAME_FORMAT.format(cluster_name)
+        secret_name = self.getSecretName(cluster_name)
         return self.kubernetes_service.deleteSecret(secret_name, namespace)

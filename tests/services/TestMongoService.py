@@ -23,7 +23,7 @@ class TestMongoService(TestCase):
     def setUp(self):
         super().setUp()
         self.kubernetes_service: Union[MagicMock, KubernetesService] = MagicMock()
-        self.kubernetes_service.getOperatorAdminSecret.return_value = V1Secret(
+        self.kubernetes_service.getSecret.return_value = V1Secret(
             metadata=V1ObjectMeta(name="mongo-cluster-admin-credentials", namespace="default"),
             data={"password": b64encode(b"random-password"), "username": b64encode(b"root")},
         )
@@ -253,7 +253,7 @@ class TestMongoService(TestCase):
 
         self.service.createUsers(self.cluster_object)
         expected_calls = [
-            call.getOperatorAdminSecret('mongo-cluster', 'default'),
+            call.getSecret('mongo-cluster-admin-credentials', 'default'),
             call.execInPod('mongodb', 'mongo-cluster-0', 'default',
                            ['mongo', 'localhost:27017/admin', '--eval', self.expected_user_create])
         ]
@@ -265,7 +265,7 @@ class TestMongoService(TestCase):
         with self.assertRaises(ValueError) as context:
             self.service.createUsers(self.cluster_object)
         expected_calls = [
-            call.getOperatorAdminSecret('mongo-cluster', 'default'),
+            call.getSecret('mongo-cluster-admin-credentials', 'default'),
             call.execInPod('mongodb', 'mongo-cluster-0', 'default',
                            ['mongo', 'localhost:27017/admin', '--eval', self.expected_user_create])
         ]
@@ -279,7 +279,7 @@ class TestMongoService(TestCase):
 
         self.service.createUsers(self.cluster_object)
         expected_calls = [
-            call.getOperatorAdminSecret('mongo-cluster', 'default'),
+            call.getSecret('mongo-cluster-admin-credentials', 'default'),
             call.execInPod('mongodb', 'mongo-cluster-0', 'default',
                            ['mongo', 'localhost:27017/admin', '--eval', self.expected_user_create]),
             call.execInPod('mongodb', 'mongo-cluster-1', 'default',
@@ -292,7 +292,7 @@ class TestMongoService(TestCase):
 
         with self.assertRaises(TimeoutError) as context:
             self.service.createUsers(self.cluster_object)
-        expected_calls = [call.getOperatorAdminSecret('mongo-cluster', 'default')] + [
+        expected_calls = [call.getSecret('mongo-cluster-admin-credentials', 'default')] + [
             call.execInPod('mongodb', 'mongo-cluster-' + str(pod), 'default',
                            ['mongo', 'localhost:27017/admin', '--eval', self.expected_user_create])
             for _ in range(4) for pod in range(3)
