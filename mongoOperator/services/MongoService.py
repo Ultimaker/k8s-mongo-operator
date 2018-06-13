@@ -8,6 +8,7 @@ from time import sleep
 
 from kubernetes.client.rest import ApiException
 
+from mongoOperator.helpers.AdminSecretChecker import AdminSecretChecker
 from mongoOperator.helpers.MongoResources import MongoResources
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
@@ -150,7 +151,8 @@ class MongoService:
         namespace = cluster_object.metadata.namespace
         replicas = cluster_object.spec.mongodb.replicas
 
-        admin_credentials = self.kubernetes_service.getOperatorAdminSecret(cluster_name, namespace)
+        secret_name = AdminSecretChecker.getSecretName(cluster_name)
+        admin_credentials = self.kubernetes_service.getSecret(secret_name, namespace)
         create_admin_command = MongoResources.createCreateAdminCommand(admin_credentials)
 
         logging.info("Creating users for %s pods", replicas)
