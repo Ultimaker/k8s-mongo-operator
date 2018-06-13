@@ -48,11 +48,7 @@ class BaseModel:
         """
         if not skip_validation:
             self.validate()
-        result = {}
-        for name, field in self.fields.items():
-            if self[name] is not None : # and not isinstance(self[name], Field):
-                result[name] = field.to_dict(self[name])
-        return result
+        return {name: field.to_dict(self[name], skip_validation=skip_validation) for name, field in self.fields.items()}
 
     def __eq__(self, other: any) -> bool:
         """

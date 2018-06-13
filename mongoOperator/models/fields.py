@@ -53,13 +53,15 @@ class Field:
         self.validate(value)
         return value
 
-    def to_dict(self, value) -> any:
+    def to_dict(self, value, skip_validation: bool = False) -> any:
         """
         Returns a the value of this field as it should be set in the model dictionaries.
         :param value: The value to be converted.
+        :param skip_validation: Whether the validation should be skipped.
         :return: The value of this field.
         """
-        self.validate(value)
+        if not skip_validation:
+            self.validate(value)
         return value
 
 
@@ -90,13 +92,13 @@ class EmbeddedField(Field):
                 values = {pascal_to_lowercase(field_name): field_value for field_name, field_value in value.items()}
                 value = self.field_type(**values)
             except TypeError as err:
-                raise ValueError("Invalid values passed to field {}: {}. Received {}."
+                raise ValueError("Invalid values passed to {} field: {}. Received {}."
                                  .format(self.field_type.__name__, err, value))
         return super().parse(value)
 
-    def to_dict(self, value) -> Optional[Dict[str, any]]:
-        self.validate(value)
-        if value is None or isinstance(value, Field):
+    def to_dict(self, value, skip_validation: bool = False) -> Optional[Dict[str, any]]:
+        value = super().to_dict(value, skip_validation)
+        if value is None:
             return None
         return {k: v for k, v in value.to_dict().items() if v is not None}
 

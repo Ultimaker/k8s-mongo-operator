@@ -2,6 +2,7 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 from unittest import TestCase
+from unittest.mock import patch
 
 from kubernetes.client import V1SecretKeySelector
 
@@ -25,6 +26,19 @@ class TestV1MongoClusterConfiguration(TestCase):
         self.cluster_dict["spec"]["backups"]["gcs"]["service_account"]["secret_key_ref"] = \
             self.cluster_dict["spec"]["backups"]["gcs"]["service_account"].pop("secretKeyRef")
         self.assertEquals(self.cluster_dict, self.cluster_object.to_dict())
+
+    def test_wrong_values_kubernetes_field(self):
+        self.cluster_dict["metadata"] = {"invalid": "value"}
+        with self.assertRaises(ValueError) as context:
+            V1MongoClusterConfiguration(**self.cluster_dict)
+        self.assertEqual("Invalid values passed to V1ObjectMeta field: __init__() got an unexpected keyword argument "
+                         "'invalid'. Received {'invalid': 'value'}.", str(context.exception))
+
+    def test_embedded_field_none(self):
+        del self.cluster_dict["metadata"]
+        self.cluster_object.metadata = None
+        self.assertEqual(self.cluster_object.to_dict(skip_validation=True),
+                         V1MongoClusterConfiguration(**self.cluster_dict).to_dict(skip_validation=True))
 
     def test_non_required_fields(self):
         cluster_dict = getExampleClusterDefinition(replicas=5)
