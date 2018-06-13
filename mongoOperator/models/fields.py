@@ -1,7 +1,7 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-from typing import Dict, Type
+from typing import Dict, Type, Optional
 
 import re
 
@@ -15,6 +15,17 @@ def pascal_to_lowercase(value: str) -> str:
     :return: The converted string.
     """
     return re.sub(r"([a-z0-9]+)([A-Z])", r"\1_\2", value).lower()
+
+
+def lowercase_to_pascal(value: str) -> str:
+    """
+    Converts a string from lower-case underscore separated strings into pascal case.
+    e.g. pascal_case => pascalCase.
+    Note: K8s API returns pascal cased strings, but in Python we use lower-cased strings with underscores instead.
+    :param value: The string to be converted.
+    :return: The converted string.
+    """
+    return re.sub(r"([a-z0-9]+)_([a-z])", lambda m: m.group(1) + m.group(2).upper(), value)
 
 
 class Field:
@@ -42,13 +53,15 @@ class Field:
         self.validate(value)
         return value
 
-    def to_dict(self, value) -> any:
+    def to_dict(self, value, skip_validation: bool = False) -> any:
         """
         Returns a the value of this field as it should be set in the model dictionaries.
         :param value: The value to be converted.
+        :param skip_validation: Whether the validation should be skipped.
         :return: The value of this field.
         """
-        self.validate(value)
+        if not skip_validation:
+            self.validate(value)
         return value
 
 
@@ -74,12 +87,19 @@ class EmbeddedField(Field):
 
     def parse(self, value: Dict[str, any]):
         if isinstance(value, dict):
-            # K8s API returns pascal cased strings, but we use lower-cased strings with underscores instead.
-            values = {pascal_to_lowercase(field_name): field_value for field_name, field_value in value.items()}
-            value = self.field_type(**values)
+            try:
+                # K8s API returns pascal cased strings, but we use lower-cased strings with underscores instead.
+                values = {pascal_to_lowercase(field_name): field_value for field_name, field_value in value.items()}
+                value = self.field_type(**values)
+            except TypeError as err:
+                raise ValueError("Invalid values passed to {} field: {}. Received {}."
+                                 .format(self.field_type.__name__, err, value))
         return super().parse(value)
 
-    def to_dict(self, value) -> Dict[str, any]:
+    def to_dict(self, value, skip_validation: bool = False) -> Optional[Dict[str, any]]:
+        value = super().to_dict(value, skip_validation)
+        if value is None:
+            return None
         return {k: v for k, v in value.to_dict().items() if v is not None}
 
 

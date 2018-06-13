@@ -6,7 +6,7 @@ import logging
 
 from typing import Dict
 
-from mongoOperator.models.fields import Field, pascal_to_lowercase
+from mongoOperator.models.fields import Field, lowercase_to_pascal
 
 
 class BaseModel:
@@ -22,13 +22,13 @@ class BaseModel:
         """
         self.fields = dict(inspect.getmembers(type(self), lambda f: isinstance(f, Field)))  # type: Dict[str, Field]
 
-        for field_name, value in kwargs.items():
+        for field_name, field in self.fields.items():
             # K8s API returns pascal cased strings, but we use lower-cased strings with underscores instead.
-            field_lower = pascal_to_lowercase(field_name)
-            if field_lower in self.fields:
-                setattr(self, field_lower, self.fields[field_lower].parse(value))
-            else:
-                logging.warning("The model %s does not have the %s field!", type(self), field_lower)
+            # we accept both in our models.
+            value = kwargs.get(field_name, kwargs.get(lowercase_to_pascal(field_name)))
+            if value is not None:
+                value = field.parse(value)
+            setattr(self, field_name, value)
 
     def validate(self) -> None:
         """
@@ -40,17 +40,15 @@ class BaseModel:
             except (ValueError, AttributeError) as err:
                 raise ValueError("Error for field {}: {}".format(repr(name), err))
 
-    def to_dict(self) -> Dict[str, any]:
+    def to_dict(self, skip_validation: bool = False) -> Dict[str, any]:
         """
         Returns a dictionary with the data of each field.
+        :param skip_validation: Whether the validation should be skipped.
         :return: A dict with the attribute name as key and the attribute value.
         """
-        self.validate()
-        result = {}
-        for name, field in self.fields.items():
-            if self[name] is not None:
-                result[name] = field.to_dict(self[name])
-        return result
+        if not skip_validation:
+            self.validate()
+        return {name: field.to_dict(self[name], skip_validation=skip_validation) for name, field in self.fields.items()}
 
     def __eq__(self, other: any) -> bool:
         """
@@ -75,5 +73,7 @@ class BaseModel:
         Shows the string-representation of this object.
         :return: The object as string.
         """
-        return "{}({})".format(self.__class__.__name__,
-                               ", ".join('{}={}'.format(attr, value) for attr, value in self.to_dict().items()))
+        return "{}({})".format(
+            self.__class__.__name__,
+            ", ".join('{}={}'.format(attr, value) for attr, value in self.to_dict(skip_validation=True).items())
+        )

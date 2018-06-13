@@ -423,6 +423,19 @@ class TestKubernetesService(TestCase):
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.AppsV1beta1Api().create_namespaced_stateful_set.return_value, result)
 
+    def test_createStatefulSet_no_optional_fields(self, client_mock):
+        service = KubernetesService()
+        client_mock.reset_mock()
+        del self.cluster_dict["spec"]["mongodb"]["cpu_limit"]
+        del self.cluster_dict["spec"]["mongodb"]["memory_limit"]
+        self.cluster_object = V1MongoClusterConfiguration(**self.cluster_dict)
+
+        expected_calls = [call.AppsV1beta1Api().create_namespaced_stateful_set(self.namespace, self.stateful_set)]
+
+        result = service.createStatefulSet(self.cluster_object)
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual(client_mock.AppsV1beta1Api().create_namespaced_stateful_set.return_value, result)
+
     def test_updateStatefulSet(self, client_mock):
         service = KubernetesService()
         client_mock.reset_mock()
