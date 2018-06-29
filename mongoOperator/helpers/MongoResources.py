@@ -2,6 +2,7 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import json
+import logging
 from json import JSONDecodeError
 
 import re
@@ -119,7 +120,9 @@ class MongoResources:
         if error_search:
             raise ValueError(error_search.group(1).strip(": "))
 
-        raise ValueError("Cannot parse MongoDB status response: {}".format(repr(exec_response)))
+        # MongoDB often returns an empty status when it's starting up.
+        logging.info("Cannot find any JSON or error in the MongoDB response: %s", repr(exec_response))
+        return {}
 
     @classmethod
     def _createReplicaConfig(cls, cluster_object: V1MongoClusterConfiguration) -> Dict[str, any]:

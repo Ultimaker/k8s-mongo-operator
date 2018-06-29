@@ -47,10 +47,9 @@ class MongoService:
             try:
                 exec_response = self.kubernetes_service.execInPod(self.CONTAINER, pod_name, namespace, exec_command)
                 response = MongoResources.parseMongoResponse(exec_response)
-                if response.get("ok") == 0 and response.get("codeName") == "NodeNotFound":
-                    logging.info("Waiting for replica set members for %s @ ns/%s: %s", pod_name, namespace, response)
-                else:
+                if response and response.get("codeName") != "NodeNotFound":
                     return response
+                logging.info("Waiting for replica set members for %s @ ns/%s: %s", pod_name, namespace, response)
 
             except ValueError as e:
                 if str(e) not in ("connection attempt failed", "connect failed"):
