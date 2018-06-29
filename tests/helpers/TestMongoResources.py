@@ -101,9 +101,17 @@ class TestMongoResources(TestCase):
         self.assertEqual("connect failed", str(context.exception))
 
     def test_parseMongoResponse_empty(self):
-        with self.assertRaises(ValueError) as context:
-            MongoResources.parseMongoResponse("")
-        self.assertEqual("Cannot parse MongoDB status response: ''", str(context.exception))
+        self.assertEqual({}, MongoResources.parseMongoResponse(''))
+
+    def test_parseMongoResponse_only_version(self):
+        self.assertEqual({}, MongoResources.parseMongoResponse("MongoDB shell version v3.6.4\n"))
+
+    def test_parseMongoResponse_version_twice(self):
+        self.assertEqual({}, MongoResources.parseMongoResponse(
+            "MongoDB shell version v3.6.4\n"
+            "connecting to: mongodb://localhost:27017/admin\n"
+            "MongoDB server version: 3.6.4\n"
+        ))
 
     def test_parseMongoResponse_bad_json(self):
         with open("tests/fixtures/mongo_responses/replica-status-ok.txt") as f:
