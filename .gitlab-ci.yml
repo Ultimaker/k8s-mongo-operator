@@ -1,0 +1,23 @@
+image: docker:latest
+
+services:
+  # Needed for Docker access in the container.
+  - docker:dind
+
+variables:
+  # Needed for Docker access in the container.
+  DOCKER_HOST: tcp://0.0.0.0:2375
+  DOCKER_DRIVER: overlay2
+
+# Define the used stages.
+stages:
+  - test
+
+# This step builds the docker image in order to run the tests.
+test:
+  stage: test
+  tags:
+  - docker
+  - kubernetes
+  script:
+    - docker build -t ultimaker/k8s-mongo-operator:tests .
