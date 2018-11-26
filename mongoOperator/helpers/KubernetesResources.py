@@ -14,16 +14,18 @@ class KubernetesResources:
     """
     Helper class responsible for creating the Kubernetes model objects.
     """
-
+    
+    # These are fixed values. They need to be these exact values for Mongo to work properly with the operator.
     MONGO_IMAGE = "mongo:3.6.4"
     MONGO_NAME = "mongodb"
     MONGO_PORT = 27017
     MONGO_COMMAND = "mongod --replSet {name} --bind_ip 0.0.0.0 --smallfiles --noprealloc"
-    MONGO_STORAGE_NAME = "mongo-storage"
 
-    STORAGE_SIZE = "30Gi"
-    STORAGE_MOUNT_PATH = "/data/db"
-
+    # These are default values and are overridable in the custom resource definition.
+    DEFAULT_STORAGE_NAME = "mongo-storage"
+    DEFAULT_STORAGE_SIZE = "30Gi"
+    DEFAULT_STORAGE_MOUNT_PATH = "/data/db"
+    DEFAULT_STORAGE_CLASS_NAME = None  # when None is passed the value is simply ignored by Kubernetes
     DEFAULT_CPU_LIMIT = "100m"
     DEFAULT_MEMORY_LIMIT = "64Mi"
 
@@ -100,6 +102,10 @@ class KubernetesResources:
         name = cluster_object.metadata.name
         namespace = cluster_object.metadata.namespace
         replicas = cluster_object.spec.mongodb.replicas
+        storage_name = cluster_object.spec.mongodb.storage_name or cls.DEFAULT_STORAGE_NAME
+        storage_size = cluster_object.spec.mongodb.storage_size or cls.DEFAULT_STORAGE_SIZE
+        storage_mount_path = cluster_object.spec.mongodb.storage_data_path or cls.DEFAULT_STORAGE_MOUNT_PATH
+        storage_class_name = cluster_object.spec.mongodb.storage_class_name or cls.DEFAULT_STORAGE_CLASS_NAME
         cpu_limit = cluster_object.spec.mongodb.cpu_limit or cls.DEFAULT_CPU_LIMIT
         memory_limit = cluster_object.spec.mongodb.memory_limit or cls.DEFAULT_MEMORY_LIMIT
 
@@ -123,9 +129,9 @@ class KubernetesResources:
                 protocol="TCP"
             )],
             volume_mounts=[client.V1VolumeMount(
-                name=cls.MONGO_STORAGE_NAME,
+                name=storage_name,
                 read_only=False,
-                mount_path=cls.STORAGE_MOUNT_PATH
+                mount_path=storage_mount_path
             )],
             resources=client.V1ResourceRequirements(
                 limits={"cpu": cpu_limit, "memory": memory_limit},
@@ -144,10 +150,11 @@ class KubernetesResources:
                     spec = client.V1PodSpec(containers=[mongo_container]),
                 ),
                 volume_claim_templates = [client.V1PersistentVolumeClaim(
-                    metadata = client.V1ObjectMeta(name=cls.MONGO_STORAGE_NAME),
+                    metadata = client.V1ObjectMeta(name=storage_name),
                     spec = client.V1PersistentVolumeClaimSpec(
                         access_modes = ["ReadWriteOnce"],
-                        resources = client.V1ResourceRequirements(requests={"storage": cls.STORAGE_SIZE}),
+                        resources = client.V1ResourceRequirements(requests={"storage": storage_size}),
+                        storage_class_name = storage_class_name
                     ),
                 )],
             ),

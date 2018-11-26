@@ -112,7 +112,7 @@ class TestKubernetesService(TestCase):
 
         result = service.createMongoObjectDefinition()
 
-        self.assertEquals(expected_def, result)
+        self.assertEqual(expected_def, result)
         expected_calls = [
             call.ApiextensionsV1beta1Api().list_custom_resource_definition(),
             call.ApiextensionsV1beta1Api().create_custom_resource_definition(expected_def),
@@ -129,7 +129,7 @@ class TestKubernetesService(TestCase):
 
         result = service.createMongoObjectDefinition()
 
-        self.assertEquals(item, result)
+        self.assertEqual(item, result)
 
         expected_calls = [call.ApiextensionsV1beta1Api().list_custom_resource_definition()]
         self.assertEqual(expected_calls, client_mock.mock_calls)
@@ -186,8 +186,8 @@ class TestKubernetesService(TestCase):
             call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongos", param='value'),
             call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongos", param='value'),
         ]
-        self.assertEquals(expected_calls, client_mock.mock_calls)
-        self.assertEquals("Could not list the custom mongo objects after 3 retries", str(context.exception))
+        self.assertEqual(expected_calls, client_mock.mock_calls)
+        self.assertEqual("Could not list the custom mongo objects after 3 retries", str(context.exception))
 
     def test_getMongoObject(self, client_mock):
         service = KubernetesService()
@@ -465,5 +465,5 @@ class TestKubernetesService(TestCase):
         stream_mock.assert_called_once_with(client_mock.CoreV1Api.return_value.connect_get_namespaced_pod_exec,
                                             'pod_name', 'default', command='ls', container='container',
                                             stderr=True, stdin=False, stdout=True, tty=False)
-        self.assertEquals(stream_mock.return_value, result)
-        self.assertEquals([], client_mock.mock_calls)
+        self.assertEqual(stream_mock.return_value, result)
+        self.assertEqual([], client_mock.mock_calls)
