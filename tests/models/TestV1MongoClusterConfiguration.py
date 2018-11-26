@@ -45,6 +45,12 @@ class TestV1MongoClusterConfiguration(TestCase):
         self.assertEqual(dict(replicas=5), cluster_dict["spec"]["mongodb"])
         self.assertEqual(V1MongoClusterConfigurationSpecMongoDB(replicas=5), cluster_object.spec.mongodb)
 
+    def test_storage_class_name(self):
+        self.cluster_dict["spec"]["mongodb"]["storage_class_name"] = "fast"
+        self.cluster_object.spec.mongodb.storage_class_name = "fast"
+        self.assertEqual(self.cluster_object.to_dict(skip_validation = True),
+                         V1MongoClusterConfiguration(**self.cluster_dict).to_dict(skip_validation = True))
+        
     def test_secret_key_ref(self):
         service_account = self.cluster_object.spec.backups.gcs.service_account
         expected = V1ServiceAccountRef(secret_key_ref=V1SecretKeySelector(name="storage-serviceaccount", key="json"))
