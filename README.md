@@ -59,6 +59,25 @@ Then deploy it to the cluster like any other object:
 kubectl apply -f mongo.yaml
 ```
 
+### Node Affinity
+You can schedule the Mongo pods on your preferred nodes:
+
+```yaml
+apiVersion: "operators.ultimaker.com/v1"
+kind: Mongo
+metadata:
+  name: mongo-cluster
+spec:
+  mongodb:
+    replicas: 3
+  nodes:
+    key: "cloud.google.com/gke-nodepool"
+    node_pool: "default-pool"
+```
+
+The pods will then be scheduled using Kubernetes' [Node Afinity](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity) feature.
+For this we use the `requiredDuringSchedulingIgnoredDuringExecution` Node selector and the `In` operator.
+
 ## Testing locally
 To run the tests in a local Kubernetes (MiniKube) cluster, we have created a simple test script.
 
@@ -86,5 +105,5 @@ You will also see the operator logs streamed to your console.
 ## Contributing
 Please make a GitHub issue or pull request to help us build this operator.
 
-## Maintainance
+## Maintenance
 The repo is currently maintained by Ultimaker. Contact us via the GitHub issues for questions or suggestions.

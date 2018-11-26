@@ -30,7 +30,9 @@ class KubernetesResources:
     DEFAULT_STORAGE_NAME = "mongo-storage"
     DEFAULT_STORAGE_SIZE = "30Gi"
     DEFAULT_STORAGE_MOUNT_PATH = "/data/db"
-    DEFAULT_STORAGE_CLASS_NAME = None  # when None is passed the value is simply ignored by Kubernetes
+    DEFAULT_STORAGE_CLASS_NAME = None  # when None is passed the value is ignored by Kubernetes
+    DEFAULT_NODE_POOL = None  # when None is passed the value is ignored by Kubernetes
+    DEFAULT_NODE_POOL_KEY = None
     
     # Default resource allocation.
     # See https://docs.mongodb.com/manual/administration/production-notes/#allocate-sufficient-ram-and-cpu.
@@ -118,16 +120,18 @@ class KubernetesResources:
         cpu_limit = cluster_object.spec.mongodb.cpu_limit or cls.DEFAULT_CPU_LIMIT
         memory_limit = cluster_object.spec.mongodb.memory_limit or cls.DEFAULT_MEMORY_LIMIT
         wired_tiger_cache_size = cluster_object.spec.mongodb.wired_tiger_cache_size or cls.DEFAULT_CACHE_SIZE
+        node_pool_key = cluster_object.spec.nodes.key if cluster_object.spec.nodes else cls.DEFAULT_NODE_POOL_KEY
+        node_pool = cluster_object.spec.nodes.node_pool if cluster_object.spec.nodes else cls.DEFAULT_NODE_POOL
 
-        # create container
+        # create container object
         mongo_container = client.V1Container(
             name=cls.MONGO_NAME,
             env=[client.V1EnvVar(
                 name="POD_IP",
                 value_from=client.V1EnvVarSource(
-                    field_ref = client.V1ObjectFieldSelector(
-                        api_version = "v1",
-                        field_path = "status.podIP"
+                    field_ref=client.V1ObjectFieldSelector(
+                        api_version="v1",
+                        field_path="status.podIP"
                     )
                 )
             )],
@@ -148,23 +152,43 @@ class KubernetesResources:
                 requests={"cpu": cpu_limit, "memory": memory_limit}
             )
         )
+        
+        # create node affinity object if required
+        node_affinity = None
+        if node_pool_key and node_pool:
+            node_affinity = client.V1Affinity(
+                node_affinity=client.V1NodeAffinity(
+                    required_during_scheduling_ignored_during_execution=client.V1NodeSelector(
+                        node_selector_terms=[client.V1NodeSelectorTerm(
+                            match_expressions=[client.V1NodeSelectorRequirement(
+                                key=node_pool_key,
+                                operator="In",
+                                values=[node_pool]
+                            )]
+                        )]
+                    )
+                )
+            )
 
-        # Create stateful set.
+        # create stateful set
         return client.V1beta1StatefulSet(
-            metadata = client.V1ObjectMeta(name=name, namespace=namespace, labels=cls.createDefaultLabels(name)),
-            spec = client.V1beta1StatefulSetSpec(
-                replicas = replicas,
-                service_name = name,
-                template = client.V1PodTemplateSpec(
-                    metadata = client.V1ObjectMeta(labels=cls.createDefaultLabels(name)),
-                    spec = client.V1PodSpec(containers=[mongo_container]),
+            metadata=client.V1ObjectMeta(name=name, namespace=namespace, labels=cls.createDefaultLabels(name)),
+            spec=client.V1beta1StatefulSetSpec(
+                replicas=replicas,
+                service_name=name,
+                template=client.V1PodTemplateSpec(
+                    metadata=client.V1ObjectMeta(labels=cls.createDefaultLabels(name)),
+                    spec=client.V1PodSpec(
+                        containers=[mongo_container],
+                        affinity=node_affinity
+                    ),
                 ),
-                volume_claim_templates = [client.V1PersistentVolumeClaim(
-                    metadata = client.V1ObjectMeta(name=storage_name),
-                    spec = client.V1PersistentVolumeClaimSpec(
-                        access_modes = ["ReadWriteOnce"],
-                        resources = client.V1ResourceRequirements(requests={"storage": storage_size}),
-                        storage_class_name = storage_class_name
+                volume_claim_templates=[client.V1PersistentVolumeClaim(
+                    metadata=client.V1ObjectMeta(name=storage_name),
+                    spec=client.V1PersistentVolumeClaimSpec(
+                        access_modes=["ReadWriteOnce"],
+                        resources=client.V1ResourceRequirements(requests={"storage": storage_size}),
+                        storage_class_name=storage_class_name
                     ),
                 )],
             ),
