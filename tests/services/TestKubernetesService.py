@@ -31,8 +31,12 @@ class TestKubernetesService(TestCase):
         self.cluster_object = V1MongoClusterConfiguration(**self.cluster_dict)
         self.name = self.cluster_object.metadata.name
         self.namespace = self.cluster_object.metadata.namespace
-
-        self.stateful_set = V1beta1StatefulSet(
+        self.cpu_limit = "100m"
+        self.memory_limit = "64Mi"
+        self.stateful_set = self._createStatefulSet()
+        
+    def _createStatefulSet(self) -> V1beta1StatefulSet:
+        return V1beta1StatefulSet(
             metadata=self._createMeta(self.name),
             spec=V1beta1StatefulSetSpec(
                 replicas=3,
@@ -47,15 +51,18 @@ class TestKubernetesService(TestCase):
                                 field_ref=V1ObjectFieldSelector(api_version="v1", field_path="status.podIP")
                             )
                         )],
-                        command=["mongod", "--replSet", self.name, "--bind_ip", "0.0.0.0", "--smallfiles",
-                                 "--noprealloc"],
+                        command=[
+                            "mongod",
+                            "--wiredTigerCacheSizeGB", "0.25",
+                            "--replSet", self.name,
+                            "--bind_ip", "0.0.0.0",
+                            "--smallfiles",
+                            "--noprealloc"
+                        ],
                         image="mongo:3.6.4",
                         ports=[V1ContainerPort(name="mongodb", container_port=27017, protocol="TCP")],
                         volume_mounts=[V1VolumeMount(name="mongo-storage", read_only=False, mount_path="/data/db")],
-                        resources=V1ResourceRequirements(
-                            limits={"cpu": "100m", "memory": "64Mi"},
-                            requests={"cpu": "100m", "memory": "64Mi"}
-                        )
+                        resources=self._createResourceLimits()
                     )])
                 ),
                 volume_claim_templates=[V1PersistentVolumeClaim(
@@ -73,6 +80,12 @@ class TestKubernetesService(TestCase):
             labels=KubernetesResources.createDefaultLabels(name),
             name=name,
             namespace=self.namespace,
+        )
+    
+    def _createResourceLimits(self) -> V1ResourceRequirements:
+        return V1ResourceRequirements(
+            limits = {"cpu": self.cpu_limit, "memory": self.memory_limit},
+            requests = {"cpu": self.cpu_limit, "memory": self.memory_limit}
         )
 
     def test___init__(self, client_mock):
@@ -428,7 +441,10 @@ class TestKubernetesService(TestCase):
         client_mock.reset_mock()
         del self.cluster_dict["spec"]["mongodb"]["cpu_limit"]
         del self.cluster_dict["spec"]["mongodb"]["memory_limit"]
+        self.cpu_limit = "1"
+        self.memory_limit = "2Gi"
         self.cluster_object = V1MongoClusterConfiguration(**self.cluster_dict)
+        self.stateful_set = self._createStatefulSet()  # update with the new resource requirements
 
         expected_calls = [call.AppsV1beta1Api().create_namespaced_stateful_set(self.namespace, self.stateful_set)]
 

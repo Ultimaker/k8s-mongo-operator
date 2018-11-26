@@ -19,15 +19,24 @@ class KubernetesResources:
     MONGO_IMAGE = "mongo:3.6.4"
     MONGO_NAME = "mongodb"
     MONGO_PORT = 27017
-    MONGO_COMMAND = "mongod --replSet {name} --bind_ip 0.0.0.0 --smallfiles --noprealloc"
+    MONGO_COMMAND = "mongod \
+        --wiredTigerCacheSizeGB {cache_size} \
+        --replSet {name} \
+        --bind_ip 0.0.0.0 \
+        --smallfiles \
+        --noprealloc"
 
     # These are default values and are overridable in the custom resource definition.
     DEFAULT_STORAGE_NAME = "mongo-storage"
     DEFAULT_STORAGE_SIZE = "30Gi"
     DEFAULT_STORAGE_MOUNT_PATH = "/data/db"
     DEFAULT_STORAGE_CLASS_NAME = None  # when None is passed the value is simply ignored by Kubernetes
-    DEFAULT_CPU_LIMIT = "100m"
-    DEFAULT_MEMORY_LIMIT = "64Mi"
+    
+    # Default resource allocation.
+    # See https://docs.mongodb.com/manual/administration/production-notes/#allocate-sufficient-ram-and-cpu.
+    DEFAULT_CPU_LIMIT = "1"
+    DEFAULT_MEMORY_LIMIT = "2Gi"
+    DEFAULT_CACHE_SIZE = "0.25"
 
     @classmethod
     def createSecret(cls, secret_name: str, namespace: str, secret_data: Dict[str, str],
@@ -108,6 +117,7 @@ class KubernetesResources:
         storage_class_name = cluster_object.spec.mongodb.storage_class_name or cls.DEFAULT_STORAGE_CLASS_NAME
         cpu_limit = cluster_object.spec.mongodb.cpu_limit or cls.DEFAULT_CPU_LIMIT
         memory_limit = cluster_object.spec.mongodb.memory_limit or cls.DEFAULT_MEMORY_LIMIT
+        wired_tiger_cache_size = cluster_object.spec.mongodb.wired_tiger_cache_size or cls.DEFAULT_CACHE_SIZE
 
         # create container
         mongo_container = client.V1Container(
@@ -121,7 +131,7 @@ class KubernetesResources:
                     )
                 )
             )],
-            command=cls.MONGO_COMMAND.format(name=name).split(),
+            command=cls.MONGO_COMMAND.format(name=name, cache_size=wired_tiger_cache_size).split(),
             image=cls.MONGO_IMAGE,
             ports=[client.V1ContainerPort(
                 name=cls.MONGO_NAME,
