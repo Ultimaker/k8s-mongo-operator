@@ -110,7 +110,7 @@ class TestClusterChecker(TestCase):
         stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects,
                                             _request_timeout=self.checker.STREAM_REQUEST_TIMEOUT)
         self.assertTrue(watch_mock.return_value.stop)
-        self.assertEquals("100", watch_mock.return_value.resource_version)
+        self.assertEqual("100", watch_mock.return_value.resource_version)
 
     @patch("mongoOperator.helpers.BaseResourceChecker.BaseResourceChecker.cleanResources")
     @patch("mongoOperator.helpers.BaseResourceChecker.BaseResourceChecker.listResources")

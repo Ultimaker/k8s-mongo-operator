@@ -18,7 +18,7 @@ class MongoOperator:
         """
         self._sleep_per_run = sleep_per_run
 
-    def run_forever(self):
+    def run_forever(self) -> None:
         """
         Runs the mongo operator forever (until a kill command is received).
         """
