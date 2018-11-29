@@ -60,11 +60,11 @@ kubectl apply -f mongo.yaml
 ```
 
 ### Configuration options
-The following options are available to use in the `spec` section of the `yaml` configuration file:
+The following options are available to use in the `spec` section of the `yaml` configuration file. Keys with a `*` in front are required.
 
-| Config key | Default value | Description |
+| Config key | Default | Description |
 | --- | --- | --- |
-| `mongodb.mongo_name` |  | The name of the Mongo deployment. |
+| * `mongodb.mongo_name` | - | The name of the Mongo deployment. |
 | `mongodb.storage_name` | mongo-storage | The name of the persistent volumes that Kubernetes will create and mount. |
 | `mongodb.storage_size` | 30Gi | The size of the persistent volumes. |
 | `mongodb.storage_data_path` | /data/db | The path on which the persistent volumes are mounted in the Mongo containers. |
@@ -72,9 +72,12 @@ The following options are available to use in the `spec` section of the `yaml` c
 | `mongodb.cpu_limit` | 1 | The CPU limit of each container. |
 | `mongodb.memory_limit` | 2Gi | The memory limit of each container. |
 | `mongodb.wired_tiger_cache_size` | 0.25 | The wired tiger cache size. |
-| `mongodb.replicas` | No default, this is a required field. | The amount of MongoDB replicas that should be available in the replica set. Must be an uneven positive integer and minimum 3. |
+| `mongodb.replicas` | - | The amount of MongoDB replicas that should be available in the replica set. Must be an uneven positive integer and minimum 3. |
+| * `backups.cron` | - | The cron on which to create a backup to cloud storage.
+| * `backups.gcs.bucket` | - | The GCS bucket to upload the backup to. |
+| `backups.gcs.prefix` | backups/ | The file name prefix for the backup file. |
 
-> Please check https://docs.mongodb.com/manual/administration/production-notes/#allocate-sufficient-ram-and-cpu for details about why setting the WiredTiger cache size is important when you change the container memory limit from the default value.
+> Please read https://docs.mongodb.com/manual/administration/production-notes/#allocate-sufficient-ram-and-cpu for details about why setting the WiredTiger cache size is important when you change the container memory limit from the default value.
 
 ## Testing locally
 To run the tests in a local Kubernetes (MiniKube) cluster, we have created a simple test script.
