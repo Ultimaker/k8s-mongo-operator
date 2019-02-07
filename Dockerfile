@@ -14,15 +14,15 @@ RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2930ADAE8CAF505
 FROM base AS tests
 WORKDIR /usr/src/app
 COPY requirements-testing.txt ./
-ADD . .
 ARG cache=1
 ARG KUBERNETES_SERVICE_HOST="localhost"
 ARG KUBERNETES_SERVICE_PORT=8081
 RUN pip install -r requirements-testing.txt && \
     mkdir -p /var/run/secrets/kubernetes.io/serviceaccount && \
     echo "unit-test" >> /var/run/secrets/kubernetes.io/serviceaccount/token && \
-    echo "unit-test" >> /var/run/secrets/kubernetes.io/serviceaccount/ca.crt && \
-    ENV_NAME=testing ASYNC_TEST_TIMEOUT=15 coverage run --source="mongoOperator" -m pytest && \
+    echo "unit-test" >> /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+ADD . .
+RUN ENV_NAME=testing ASYNC_TEST_TIMEOUT=15 coverage run --source="mongoOperator" -m pytest && \
     coverage report --skip-covered --show-missing  --fail-under=100
 
 # This is the container build statements that will create the container meant for deployment

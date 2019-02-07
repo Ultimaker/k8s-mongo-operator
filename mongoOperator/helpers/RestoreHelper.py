@@ -50,12 +50,13 @@ class RestoreHelper:
         :return: String containing the filename of the last backup.
         """
         prefix = cluster_object.spec.backups.gcs.prefix or self.DEFAULT_BACKUP_PREFIX
+        bucket_name = cluster_object.spec.backups.gcs.restore_bucket if cluster_object.spec.backups.gcs.restore_bucket \
+            else cluster_object.spec.backups.gcs.bucket
         return self._lastBackupFile(
             credentials=self._getCredentials(cluster_object),
-            bucket_name=cluster_object.spec.backups.gcs.restore_bucket \
-                    if cluster_object.spec.backups.gcs.restore_bucket \
-                    else cluster_object.spec.backups.gcs.bucket,
-            key="{}/".format(prefix))
+            bucket_name=bucket_name,
+            key="{}/".format(prefix)
+        )
 
     @staticmethod
     def _lastBackupFile(credentials: dict, bucket_name: str, key: str) -> str:
@@ -87,8 +88,9 @@ class RestoreHelper:
         :return: Whether a restore was executed or not.
         """
         cluster_key = (cluster_object.metadata.name, cluster_object.metadata.namespace)
-        if hasattr(cluster_object.spec.backups.gcs, 'restore_from'):
+        if hasattr(cluster_object.spec.backups.gcs, "restore_from"):
             backup_file = cluster_object.spec.backups.gcs.restore_from
+            print("backup_file", backup_file)
             if backup_file == 'latest':
                 backup_file = self.getLastBackup(cluster_object)
 
