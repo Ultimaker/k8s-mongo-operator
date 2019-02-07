@@ -75,6 +75,7 @@ The following options are available to use in the `spec` section of the `yaml` c
 | `mongodb.replicas` | - | The amount of MongoDB replicas that should be available in the replica set. Must be an uneven positive integer and minimum 3. |
 | * `backups.cron` | - | The cron on which to create a backup to cloud storage.
 | * `backups.gcs.bucket` | - | The GCS bucket to upload the backup to. |
+| `backups.gcs.restore_bucket` | - | The GCS bucket that contains the backup we wish to restore. |
 | `backups.gcs.prefix` | backups/ | The file name prefix for the backup file. |
 
 > Please read https://docs.mongodb.com/manual/administration/production-notes/#allocate-sufficient-ram-and-cpu for details about why setting the WiredTiger cache size is important when you change the container memory limit from the default value.

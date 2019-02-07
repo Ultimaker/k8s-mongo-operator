@@ -1,0 +1,23 @@
+apiVersion: "operators.ultimaker.com/v1"
+kind: Mongo
+metadata:
+  name: mongo-cluster
+  namespace: default
+spec:
+  mongodb:
+    replicas: 3  # Must be between 3 and 50
+    cpu_limit: "200m"
+    memory_limit: "64Mi"
+  backups:
+    cron: "0 * * * *"  # every hour at 0 minutes
+    gcs:
+      bucket: "ultimaker-mongo-backups"
+      # Set restore_from to 'latest' to use the last backup created when initializing the replicaset.
+      restore_from: "latest"
+      # set restore_bucket if the file in restore_from is in another bucket.
+      # restore_bucket:
+      prefix: "test-backups"
+      serviceAccount:
+        secretKeyRef:
+          name: storage-serviceaccount
+          key: json

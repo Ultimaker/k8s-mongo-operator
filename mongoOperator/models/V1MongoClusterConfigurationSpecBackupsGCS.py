@@ -14,3 +14,7 @@ class V1MongoClusterConfigurationSpecBackupsGCS(BaseModel):
     bucket = StringField(required=True)
     prefix = StringField(required=False)
     service_account = EmbeddedField(V1ServiceAccountRef, required=True)
+
+    # When initializing a new ReplicaSet, load the data from this filename and bucket.
+    restore_from = StringField(required=False)
+    restore_bucket = StringField(required=False)

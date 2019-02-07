@@ -10,6 +10,8 @@ from kubernetes.client.rest import ApiException
 
 from mongoOperator.helpers.AdminSecretChecker import AdminSecretChecker
 from mongoOperator.helpers.MongoResources import MongoResources
+from mongoOperator.helpers.RestoreHelper import RestoreHelper
+
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 
@@ -27,6 +29,8 @@ class MongoService:
 
     def __init__(self, kubernetes_service: KubernetesService):
         self.kubernetes_service = kubernetes_service
+        self.restore_helper = RestoreHelper(self.kubernetes_service)
+
 
     def _execInPod(self, pod_index: int, name: str, namespace: str, mongo_command: str) -> Dict[str, any]:
         """
@@ -84,6 +88,9 @@ class MongoService:
 
         if create_replica_response["ok"] == 1:
             logging.info("Initialized replica set %s @ ns/%s", cluster_name, namespace)
+
+            # If restore was specified, load restore file
+            self.restore_helper.restoreIfNeeded(cluster_object)
         else:
             raise ValueError("Unexpected response initializing replica set {} @ ns/{}:\n{}"
                              .format(cluster_name, namespace, create_replica_response))
