@@ -12,7 +12,7 @@ from datetime import datetime
 from unittest import TestCase
 from unittest.mock import MagicMock, patch, call
 
-from mongoOperator.helpers.BackupChecker import BackupChecker
+from mongoOperator.helpers.BackupHelper import BackupHelper
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 from tests.test_utils import getExampleClusterDefinition
@@ -23,7 +23,7 @@ class TestBackupChecker(TestCase):
         self.cluster_dict = getExampleClusterDefinition()
         self.cluster_object = V1MongoClusterConfiguration(**self.cluster_dict)
         self.kubernetes_service = MagicMock()
-        self.checker = BackupChecker(cast(KubernetesService, self.kubernetes_service))
+        self.checker = BackupHelper(cast(KubernetesService, self.kubernetes_service))
 
         self.dummy_credentials = b64encode(json.dumps({"user": "password"}).encode())
         self.kubernetes_service.getSecret.return_value = V1Secret(data={"json": self.dummy_credentials})
@@ -34,7 +34,7 @@ class TestBackupChecker(TestCase):
         after = datetime.utcnow()
         self.assertTrue(before <= actual <= after)
 
-    @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backup")
+    @patch("mongoOperator.helpers.BackupHelper.BackupHelper.backup")
     def test_backupIfNeeded_check_if_needed(self, backup_mock):
         # this backup is executed every hour at 0 minutes.
         self.assertEqual("0 * * * *", self.cluster_object.spec.backups.cron)
@@ -44,7 +44,7 @@ class TestBackupChecker(TestCase):
         expected_calls = []
         current_date = datetime(2018, 2, 28, 12, 30, 0)
 
-        with patch("mongoOperator.helpers.BackupChecker.BackupChecker._utcNow", lambda _: current_date):
+        with patch("mongoOperator.helpers.BackupHelper.BackupHelper._utcNow", lambda _: current_date):
             # on the first run, it should backup regardless of the time.
             self.checker.backupIfNeeded(self.cluster_object)
             expected_calls.append(call(self.cluster_object, current_date))
@@ -77,10 +77,10 @@ class TestBackupChecker(TestCase):
             self.assertEqual(expected_calls, backup_mock.mock_calls)
             self.assertEqual({key: current_date}, self.checker._last_backups)
 
-    @patch("mongoOperator.helpers.BackupChecker.os")
-    @patch("mongoOperator.helpers.BackupChecker.StorageClient")
-    @patch("mongoOperator.helpers.BackupChecker.ServiceCredentials")
-    @patch("mongoOperator.helpers.BackupChecker.check_output")
+    @patch("mongoOperator.helpers.BackupHelper.os")
+    @patch("mongoOperator.helpers.BackupHelper.StorageClient")
+    @patch("mongoOperator.helpers.BackupHelper.ServiceCredentials")
+    @patch("mongoOperator.helpers.BackupHelper.check_output")
     def test_backup(self, subprocess_mock, gcs_service_mock, storage_mock, os_mock):
         current_date = datetime(2018, 2, 28, 14, 0, 0)
         expected_backup_name = "mongodb-backup-mongo-operator-cluster-mongo-cluster-2018-02-28_140000.archive.gz"
@@ -110,7 +110,7 @@ class TestBackupChecker(TestCase):
         expected_os_call = call.remove('/tmp/' + expected_backup_name)
         self.assertEqual([expected_os_call], os_mock.mock_calls)
 
-    @patch("mongoOperator.helpers.BackupChecker.check_output")
+    @patch("mongoOperator.helpers.BackupHelper.check_output")
     def test_backup_mongo_error(self, subprocess_mock):
         subprocess_mock.side_effect = CalledProcessError(3, "cmd", "output", "error")
         current_date = datetime(2018, 2, 28, 14, 0, 0)
@@ -124,7 +124,7 @@ class TestBackupChecker(TestCase):
                          str(context.exception))
         self.assertEqual(1, subprocess_mock.call_count)
 
-    @patch("mongoOperator.helpers.BackupChecker.check_output")
+    @patch("mongoOperator.helpers.BackupHelper.check_output")
     def test_backup_gcs_bad_credentials(self, subprocess_mock):
         current_date = datetime(2018, 2, 28, 14, 0, 0)
         with self.assertRaises(ValueError) as context:

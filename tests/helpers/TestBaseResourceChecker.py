@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, call
 
 from kubernetes.client.rest import ApiException
 
-from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
+from mongoOperator.helpers.resourceCheckers.BaseResourceChecker import BaseResourceChecker
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 from tests.test_utils import getExampleClusterDefinition

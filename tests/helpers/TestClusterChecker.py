@@ -3,7 +3,7 @@
 # -*- coding: utf-8 -*-
 from unittest import TestCase
 from unittest.mock import patch, call
-from mongoOperator.helpers.ClusterChecker import ClusterChecker
+from mongoOperator.ClusterManager import ClusterChecker
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from tests.test_utils import getExampleClusterDefinition
 from bson.json_util import loads
@@ -14,7 +14,7 @@ class TestClusterChecker(TestCase):
 
     def setUp(self):
         super().setUp()
-        with patch("mongoOperator.helpers.ClusterChecker.KubernetesService") as ks:
+        with patch("mongoOperator.ClusterManager.KubernetesService") as ks:
             self.checker = ClusterChecker()
             self.kubernetes_service = ks.return_value
         self.cluster_dict = getExampleClusterDefinition()
@@ -53,7 +53,7 @@ class TestClusterChecker(TestCase):
         self.assertEqual({}, self.checker._cluster_versions)
 
     @patch("mongoOperator.services.MongoService.MongoClient")
-    @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
+    @patch("mongoOperator.helpers.BackupHelper.BackupHelper.backupIfNeeded")
     def test_checkExistingClusters(self, backup_mock, mongo_client_mock):
         self.checker._cluster_versions[("mongo-cluster", self.cluster_object.metadata.namespace)] = "100"
         self.kubernetes_service.listMongoObjects.return_value = {"items": [self.cluster_dict]}
@@ -65,8 +65,8 @@ class TestClusterChecker(TestCase):
         self.assertEqual(expected, self.kubernetes_service.mock_calls)
         backup_mock.assert_called_once_with(self.cluster_object)
 
-    @patch("mongoOperator.helpers.BaseResourceChecker.BaseResourceChecker.cleanResources")
-    @patch("mongoOperator.helpers.BaseResourceChecker.BaseResourceChecker.listResources")
+    @patch("mongoOperator.helpers.resourceCheckers.BaseResourceChecker.BaseResourceChecker.cleanResources")
+    @patch("mongoOperator.helpers.resourceCheckers.BaseResourceChecker.BaseResourceChecker.listResources")
     def test_collectGarbage(self, list_mock, clean_mock):
         list_mock.return_value = [self.cluster_object]
         self.checker.collectGarbage()
@@ -74,7 +74,7 @@ class TestClusterChecker(TestCase):
         self.assertEqual([], self.kubernetes_service.mock_calls)  # k8s is not called because we mocked everything
 
     @patch("mongoOperator.services.MongoService.MongoClient")
-    @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
+    @patch("mongoOperator.helpers.BackupHelper.BackupHelper.backupIfNeeded")
     def test_checkCluster_same_version(self, backup_mock, mongo_client_mock):
         self.checker._cluster_versions[("mongo-cluster", "mongo-operator-cluster")] = "100"
         mongo_client_mock.return_value.admin.command.return_value = self._getMongoFixture("replica-status-ok")
@@ -83,9 +83,9 @@ class TestClusterChecker(TestCase):
         backup_mock.assert_called_once_with(self.cluster_object)
 
     @patch("mongoOperator.services.MongoService.MongoClient")
-    @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
+    @patch("mongoOperator.helpers.BackupHelper.BackupHelper.backupIfNeeded")
     @patch("mongoOperator.helpers.MongoResources.MongoResources.createCreateAdminCommand")
-    @patch("mongoOperator.helpers.BaseResourceChecker.BaseResourceChecker.checkResource")
+    @patch("mongoOperator.helpers.resourceCheckers.BaseResourceChecker.BaseResourceChecker.checkResource")
     def test_checkCluster_new_version(self, check_mock, admin_mock, backup_mock, mongo_client_mock):
         admin_mock.return_value = "createUser", "foo", {}
         self.checker._cluster_versions[("mongo-cluster", "mongo-operator-cluster")] = "50"

@@ -5,7 +5,7 @@ from typing import List
 
 from kubernetes.client import V1StatefulSet, V1Status
 
-from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
+from mongoOperator.helpers.resourceCheckers.BaseResourceChecker import BaseResourceChecker
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 
 

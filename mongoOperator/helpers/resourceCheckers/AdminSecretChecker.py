@@ -7,7 +7,7 @@ from base64 import b64encode
 from kubernetes.client import V1Secret, V1Status
 from typing import List, Dict
 
-from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
+from mongoOperator.helpers.resourceCheckers.BaseResourceChecker import BaseResourceChecker
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 
 

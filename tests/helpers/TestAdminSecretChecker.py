@@ -5,7 +5,7 @@ from typing import cast
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
-from mongoOperator.helpers.AdminSecretChecker import AdminSecretChecker
+from mongoOperator.helpers.resourceCheckers.AdminSecretChecker import AdminSecretChecker
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 from tests.test_utils import getExampleClusterDefinition
@@ -34,7 +34,7 @@ class TestAdminSecretChecker(TestCase):
                                                                   self.cluster_object.metadata.namespace)
         self.assertEqual(self.kubernetes_service.getSecret.return_value, result)
 
-    @patch("mongoOperator.helpers.AdminSecretChecker.b64encode")
+    @patch("mongoOperator.helpers.resourceCheckers.AdminSecretChecker.b64encode")
     def test_createResource(self, b64encode_mock):
         b64encode_mock.return_value = b"random-password"
         result = self.checker.createResource(self.cluster_object)
@@ -44,7 +44,7 @@ class TestAdminSecretChecker(TestCase):
                                                                        "password": "random-password"}
         )
 
-    @patch("mongoOperator.helpers.AdminSecretChecker.b64encode")
+    @patch("mongoOperator.helpers.resourceCheckers.AdminSecretChecker.b64encode")
     def test_updateResource(self, b64encode_mock):
         b64encode_mock.return_value = b"random-password"
         result = self.checker.updateResource(self.cluster_object)

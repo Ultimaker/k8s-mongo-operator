@@ -4,7 +4,7 @@
 import logging
 from time import sleep
 
-from mongoOperator.helpers.ClusterChecker import ClusterChecker
+from mongoOperator.ClusterManager import ClusterChecker
 
 
 class MongoOperator:

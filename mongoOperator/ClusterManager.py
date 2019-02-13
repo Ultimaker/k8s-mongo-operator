@@ -4,11 +4,11 @@
 import logging
 from typing import Dict, List, Tuple, Optional
 
-from mongoOperator.helpers.AdminSecretChecker import AdminSecretChecker
-from mongoOperator.helpers.BackupChecker import BackupChecker
-from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
-from mongoOperator.helpers.ServiceChecker import ServiceChecker
-from mongoOperator.helpers.StatefulSetChecker import StatefulSetChecker
+from mongoOperator.helpers.resourceCheckers.AdminSecretChecker import AdminSecretChecker
+from mongoOperator.helpers.BackupHelper import BackupHelper
+from mongoOperator.helpers.resourceCheckers.BaseResourceChecker import BaseResourceChecker
+from mongoOperator.helpers.resourceCheckers.ServiceChecker import ServiceChecker
+from mongoOperator.helpers.resourceCheckers.StatefulSetChecker import StatefulSetChecker
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 from mongoOperator.services.MongoService import MongoService
@@ -23,7 +23,7 @@ class ClusterChecker:
         self._cluster_versions: Dict[Tuple[str, str], str] = {}  # format: {(cluster_name, namespace): resource_version}
         self._kubernetes_service = KubernetesService()
         self._mongo_service = MongoService(self._kubernetes_service)
-        self._backup_checker = BackupChecker(self._kubernetes_service)
+        self._backup_checker = BackupHelper(self._kubernetes_service)
         self._resource_checkers: List[BaseResourceChecker] = [
             ServiceChecker(self._kubernetes_service),
             StatefulSetChecker(self._kubernetes_service),

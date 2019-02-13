@@ -5,7 +5,7 @@ from typing import cast
 from unittest import TestCase
 from unittest.mock import MagicMock
 
-from mongoOperator.helpers.StatefulSetChecker import StatefulSetChecker
+from mongoOperator.helpers.resourceCheckers.StatefulSetChecker import StatefulSetChecker
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 from tests.test_utils import getExampleClusterDefinition

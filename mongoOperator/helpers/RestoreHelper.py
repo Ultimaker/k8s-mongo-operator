@@ -14,7 +14,6 @@ from google.oauth2.service_account import Credentials as ServiceCredentials
 from mongoOperator.helpers.MongoResources import MongoResources
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
-# from mongoOperator.services.MongoService import MongoService
 
 
 class RestoreHelper:

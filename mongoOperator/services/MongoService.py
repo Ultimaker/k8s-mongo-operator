@@ -8,7 +8,7 @@ from typing import Dict, Optional, List
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure, OperationFailure
 
-from mongoOperator.helpers.AdminSecretChecker import AdminSecretChecker
+from mongoOperator.helpers.resourceCheckers.AdminSecretChecker import AdminSecretChecker
 from mongoOperator.helpers.MongoResources import MongoResources
 from mongoOperator.helpers.RestoreHelper import RestoreHelper
 from mongoOperator.helpers.listeners.mongo.CommandLogger import CommandLogger
