@@ -55,11 +55,11 @@ class TestClusterChecker(TestCase):
 
     @patch("mongoOperator.services.MongoService.MongoClient")
     @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
-    def test_checkExistingClusters(self, backup_mock, mongoclient_mock):
+    def test_checkExistingClusters(self, backup_mock, mongo_client_mock):
         # checkCluster will assume cached version
         self.checker._cluster_versions[("mongo-cluster", self.cluster_object.metadata.namespace)] = "100"
         self.kubernetes_service.listMongoObjects.return_value = {"items": [self.cluster_dict]}
-        mongoclient_mock.return_value.admin.command.return_value = self._getMongoFixture("replica-status-ok")
+        mongo_client_mock.return_value.admin.command.return_value = self._getMongoFixture("replica-status-ok")
         self.checker.checkExistingClusters()
         self.assertEqual({("mongo-cluster", self.cluster_object.metadata.namespace): "100"},
                          self.checker._cluster_versions)
@@ -68,7 +68,7 @@ class TestClusterChecker(TestCase):
         self.assertEqual(expected, self.kubernetes_service.mock_calls)
         backup_mock.assert_called_once_with(self.cluster_object)
 
-    @patch("mongoOperator.helpers.ClusterChecker.ClusterChecker.checkCluster")
+    @patch("mongoOperator.helpers.ClusterChecker.ClusterChecker._checkCluster")
     @patch("kubernetes.watch.watch.Watch.stream")
     def test_streamEvents_add_update(self, stream_mock, check_mock):
         updated_cluster = deepcopy(self.cluster_dict)
@@ -125,12 +125,12 @@ class TestClusterChecker(TestCase):
 
     @patch("mongoOperator.services.MongoService.MongoClient")
     @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
-    def test_checkCluster_same_version(self, backup_mock, mongoclient_mock):
+    def test_checkCluster_same_version(self, backup_mock, mongo_client_mock):
         # checkCluster will assume cached version
         self.checker._cluster_versions[("mongo-cluster", self.cluster_object.metadata.namespace)] = "100"
-        mongoclient_mock.return_value.admin.command.return_value = self._getMongoFixture("replica-status-ok")
+        mongo_client_mock.return_value.admin.command.return_value = self._getMongoFixture("replica-status-ok")
 
-        self.checker.checkCluster(self.cluster_object)
+        self.checker._checkCluster(self.cluster_object)
         self.assertEqual({("mongo-cluster", self.cluster_object.metadata.namespace): "100"},
                          self.checker._cluster_versions)
 
@@ -141,21 +141,22 @@ class TestClusterChecker(TestCase):
         # print("actual:", repr(mongoclient_mock.mock_calls))
         # print("expected:", repr(expected))
         # self.assertEqual(expected, mongoclient_mock.mock_calls)
+        
         backup_mock.assert_called_once_with(self.cluster_object)
 
     @patch("mongoOperator.services.MongoService.MongoClient")
     @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
     @patch("mongoOperator.helpers.MongoResources.MongoResources.createCreateAdminCommand")
     @patch("mongoOperator.helpers.BaseResourceChecker.BaseResourceChecker.checkResource")
-    def test_checkCluster_new_version(self, check_mock, admin_mock, backup_mock, mongoclient_mock):
+    def test_checkCluster_new_version(self, check_mock, admin_mock, backup_mock, mongo_client_mock):
         admin_mock.return_value = "createUser", "foo", {}
         self.checker._cluster_versions[("mongo-cluster", self.cluster_object.metadata.namespace)] = "50"
-        mongoclient_mock.return_value.admin.command.side_effect = (self._getMongoFixture("replica-status-ok"),
-                                                                   self._getMongoFixture("createUser-ok"))
-        self.checker.checkCluster(self.cluster_object)
+        mongo_client_mock.return_value.admin.command.side_effect = (self._getMongoFixture("replica-status-ok"),
+                                                                    self._getMongoFixture("createUser-ok"))
+        self.checker._checkCluster(self.cluster_object)
         self.assertEqual({("mongo-cluster", self.cluster_object.metadata.namespace): "100"},
                          self.checker._cluster_versions)
-        expected = [call.getSecret('mongo-cluster-admin-credentials', self.cluster_object.metadata.namespace)]
+        expected = [call.getSecret("mongo-cluster-admin-credentials", self.cluster_object.metadata.namespace)]
         self.assertEqual(expected, self.kubernetes_service.mock_calls)
         self.assertEqual([call(self.cluster_object)] * 3, check_mock.mock_calls)
         backup_mock.assert_called_once_with(self.cluster_object)

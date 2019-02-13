@@ -32,22 +32,6 @@ class ClusterChecker:
             AdminSecretChecker(self._kubernetes_service),
         ]
 
-    @staticmethod
-    def _parseConfiguration(cluster_dict: Dict[str, any]) -> Optional[V1MongoClusterConfiguration]:
-        """
-        Tries to parse the given cluster configuration, returning None if the object cannot be parsed.
-        :param cluster_dict: The dictionary containing the configuration.
-        :return: The cluster configuration model, if valid, or None.
-        """
-        try:
-            result = V1MongoClusterConfiguration(**cluster_dict)
-            result.validate()
-            return result
-        except ValueError as err:
-            meta = cluster_dict.get("metadata", {})
-            logging.error("Could not validate cluster configuration for {} @ ns/{}: {}. The cluster will be ignored."
-                          .format(meta.get("name"), meta.get("namespace"), err))
-
     def checkExistingClusters(self) -> None:
         """
         Check all Mongo objects and see if the sub objects are available.
@@ -58,7 +42,7 @@ class ClusterChecker:
         for cluster_dict in mongo_objects["items"]:
             cluster_object = self._parseConfiguration(cluster_dict)
             if cluster_object:
-                self.checkCluster(cluster_object)
+                self._checkCluster(cluster_object)
 
     def streamEvents(self) -> None:
         """
@@ -77,7 +61,7 @@ class ClusterChecker:
             if event["type"] in ("ADDED", "MODIFIED"):
                 cluster_object = self._parseConfiguration(event["object"])
                 if cluster_object:
-                    self.checkCluster(cluster_object)
+                    self._checkCluster(cluster_object)
                 else:
                     logging.warning("Could not validate cluster object, stopping event watcher.")
                     event_watcher.stop = True
@@ -100,7 +84,7 @@ class ClusterChecker:
         for checker in self._resource_checkers:
             checker.cleanResources()
 
-    def checkCluster(self, cluster_object: V1MongoClusterConfiguration, force: bool = False) -> None:
+    def _checkCluster(self, cluster_object: V1MongoClusterConfiguration, force: bool = False) -> None:
         """
         Checks whether the given cluster is configured and updated.
         :param cluster_object: The cluster object from the YAML file.
@@ -121,3 +105,19 @@ class ClusterChecker:
             self._cluster_versions[key] = cluster_object.metadata.resource_version
 
         self._backup_checker.backupIfNeeded(cluster_object)
+
+    @staticmethod
+    def _parseConfiguration(cluster_dict: Dict[str, any]) -> Optional[V1MongoClusterConfiguration]:
+        """
+        Tries to parse the given cluster configuration, returning None if the object cannot be parsed.
+        :param cluster_dict: The dictionary containing the configuration.
+        :return: The cluster configuration model, if valid, or None.
+        """
+        try:
+            result = V1MongoClusterConfiguration(**cluster_dict)
+            result.validate()
+            return result
+        except ValueError as err:
+            meta = cluster_dict.get("metadata", { })
+            logging.error("Could not validate cluster configuration for {} @ ns/{}: {}. The cluster will be ignored."
+                          .format(meta.get("name"), meta.get("namespace"), err))
