@@ -5,10 +5,9 @@ import json
 from base64 import b64encode
 
 from kubernetes.client import V1Secret, V1ObjectMeta
-from kubernetes.client.rest import ApiException
 from typing import Union
 from unittest import TestCase
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 from mongoOperator.helpers.MongoResources import MongoResources
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
@@ -18,16 +17,16 @@ from tests.test_utils import getExampleClusterDefinition
 from bson.json_util import loads
 from pymongo.errors import OperationFailure, ConnectionFailure
 
+
 @patch("mongoOperator.services.MongoService.sleep", MagicMock())
+@patch("mongoOperator.services.MongoService.MongoClient")
 class TestMongoService(TestCase):
     maxDiff = None
 
     def setUp(self):
         super().setUp()
         self.kubernetes_service: Union[MagicMock, KubernetesService] = MagicMock()
-
         self.dummy_credentials = b64encode(json.dumps({"user": "password"}).encode())
-
         self.kubernetes_service.getSecret.return_value = V1Secret(
             metadata=V1ObjectMeta(name="mongo-cluster-admin-credentials", namespace="default"),
             data={
@@ -36,7 +35,6 @@ class TestMongoService(TestCase):
                 "json": self.dummy_credentials
             },
         )
-
         self.service = MongoService(self.kubernetes_service)
         self.cluster_dict = getExampleClusterDefinition()
         self.cluster_object = V1MongoClusterConfiguration(**self.cluster_dict)
@@ -65,12 +63,9 @@ class TestMongoService(TestCase):
             "_id": "mongo-cluster",
             "version": 1,
             "members": [
-                {"_id": 0, "host": "mongo-cluster-0.mongo-cluster." + self.cluster_object.metadata.namespace +
-                                   ".svc.cluster.local"},
-                {"_id": 1, "host": "mongo-cluster-1.mongo-cluster." + self.cluster_object.metadata.namespace +
-                                   ".svc.cluster.local"},
-                {"_id": 2, "host": "mongo-cluster-2.mongo-cluster." + self.cluster_object.metadata.namespace +
-                                   ".svc.cluster.local"}
+                {"_id": 0, "host": "mongo-cluster-0.mongo-cluster.mongo-operator-cluster.svc.cluster.local"},
+                {"_id": 1, "host": "mongo-cluster-1.mongo-cluster.mongo-operator-cluster.svc.cluster.local"},
+                {"_id": 2, "host": "mongo-cluster-2.mongo-cluster.mongo-operator-cluster.svc.cluster.local"}
             ]
         }
 
@@ -79,80 +74,81 @@ class TestMongoService(TestCase):
             "roles": [{"role": "root", "db": "admin"}]
         }
 
-    def _getFixture(self, name):
+    @staticmethod
+    def _getFixture(name):
         with open("tests/fixtures/mongo_responses/{}.json".format(name)) as f:
             return loads(f.read())
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test__mongoAdminCommand(self, mongoclient_mock):
-        mongoclient_mock.return_value.admin.command.return_value = self._getFixture("initiate-ok")
-        result = self.service._mongoAdminCommand(self.cluster_object, "replSetInitiate")
+    def test_mongoAdminCommand(self, mongo_client_mock):
+        mongo_client_mock.return_value.admin.command.return_value = self._getFixture("initiate-ok")
+        result = self.service._executeAdminCommand(self.cluster_object, "replSetInitiate")
         self.assertEqual(self.initiate_ok_response, result)
+        
         # expected_calls = [
         #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
         #     call().admin.command('replSetInitiate')
         # ]
         # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test__mongoAdminCommand_NodeNotFound(self, mongoclient_mock):
-        mongoclient_mock.return_value.admin.command.side_effect = OperationFailure("replSetInitiate quorum check failed"
-                                                                                   " because not all proposed set "
-                                                                                   "members responded affirmatively:")
+    def test__mongoAdminCommand_NodeNotFound(self, mongo_client_mock):
+        mongo_client_mock.return_value.admin.command.side_effect = OperationFailure(
+                "replSetInitiate quorum check failed because not all proposed set members responded affirmatively:")
+        
         with self.assertRaises(OperationFailure) as ex:
             mongo_command, mongo_args = MongoResources.createReplicaInitiateCommand(self.cluster_object)
-            self.service._mongoAdminCommand(self.cluster_object, mongo_command, mongo_args)
+            self.service._executeAdminCommand(self.cluster_object, mongo_command, mongo_args)
 
         # expected = [
         #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
         #     call().admin.command('replSetInitiate', self.expected_cluster_config)
         # ]
-        # self.assertEqual(expected, mongoclient_mock.mock_calls)
+        # self.assertEqual(expected, mongo_client_mock.mock_calls)
+        
         self.assertIn("replSetInitiate quorum check failed", str(ex.exception))
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test__mongoAdminCommand_connect_failed(self, mongoclient_mock):
-        mongoclient_mock.return_value.admin.command.side_effect = (
+    def test__mongoAdminCommand_connect_failed(self, mongo_client_mock):
+        mongo_client_mock.return_value.admin.command.side_effect = (
             ConnectionFailure("connection attempt failed"),
             self._getFixture("initiate-ok")
         )
-        result = self.service._mongoAdminCommand(self.cluster_object, "replSetGetStatus")
+        result = self.service._executeAdminCommand(self.cluster_object, "replSetGetStatus")
         self.assertEqual(self.initiate_ok_response, result)
+        
         # expected_calls = 2 * [
         #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
         #     call().admin.command('replSetGetStatus')
         # ]
-        # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
+        # self.assertEqual(expected_calls, mongo_client_mock.mock_calls)
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test__mongoAdminCommand_TimeoutError(self, mongoclient_mock):
-        mongoclient_mock.return_value.admin.command.side_effect = (
+    def test__mongoAdminCommand_TimeoutError(self, mongo_client_mock):
+        mongo_client_mock.return_value.admin.command.side_effect = (
             ConnectionFailure("connection attempt failed"),
             ConnectionFailure("connection attempt failed"),
             ConnectionFailure("connection attempt failed"),
             ConnectionFailure("connection attempt failed"),
             OperationFailure("no replset config has been received")
         )
+        
         with self.assertRaises(TimeoutError) as context:
-            self.service._mongoAdminCommand(self.cluster_object, "replSetGetStatus")
+            self.service._executeAdminCommand(self.cluster_object, "replSetGetStatus")
 
         self.assertEqual("Could not execute command after 4 retries!", str(context.exception))
+        
         # expected_calls = 4 * [
         #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
         #     call().admin.command('replSetGetStatus')
         # ]
-        # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
+        # self.assertEqual(expected_calls, mongo_client_mock.mock_calls)
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test__mongoAdminCommand_NoPrimary(self, mongoclient_mock):
-        mongoclient_mock.return_value.admin.command.side_effect = (
+    def test__mongoAdminCommand_NoPrimary(self, mongo_client_mock):
+        mongo_client_mock.return_value.admin.command.side_effect = (
             ConnectionFailure("No replica set members match selector \"Primary()\""),
             self._getFixture("initiate-ok"),
             self._getFixture("initiate-ok")
 
         )
 
-        self.service._mongoAdminCommand(self.cluster_object, "replSetGetStatus")
+        self.service._executeAdminCommand(self.cluster_object, "replSetGetStatus")
 
         # expected_calls = [
         #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
@@ -166,12 +162,10 @@ class TestMongoService(TestCase):
         # print(repr(expected_calls))
         # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    @patch("mongoOperator.helpers.RestoreHelper.RestoreHelper.restoreIfNeeded")
-    def test_initializeReplicaSet(self, restoreifneeded_mock, mongoclient_mock):
-        mongoclient_mock.return_value.admin.command.return_value = self._getFixture("initiate-ok")
-
-        self.service.initializeReplicaSet(self.cluster_object)
+    def test_initializeReplicaSet(self, mongo_client_mock):
+        mongo_client_mock.return_value.admin.command.return_value = self._getFixture("initiate-ok")
+        self.service._initializeReplicaSet(self.cluster_object)
+        
         # expected_calls = [
         #     call(MongoResources.getMemberHostname(0, self.cluster_object.metadata.name,
         #                                           self.cluster_object.metadata.namespace)),
@@ -180,63 +174,57 @@ class TestMongoService(TestCase):
         #
         # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test_initializeReplicaSet_ValueError(self, mongoclient_mock):
+    def test_initializeReplicaSet_ValueError(self, mongo_client_mock):
         command_result = self._getFixture("initiate-ok")
         command_result["ok"] = 2
-        mongoclient_mock.return_value.admin.command.return_value = command_result
+        mongo_client_mock.return_value.admin.command.return_value = command_result
+        
         with self.assertRaises(ValueError) as context:
-            self.service.initializeReplicaSet(self.cluster_object)
+            self.service._initializeReplicaSet(self.cluster_object)
 
         self.assertEqual("Unexpected response initializing replica set mongo-cluster @ ns/" +
                          self.cluster_object.metadata.namespace + ":\n" +
                          str(self.initiate_not_found_response),
                          str(context.exception))
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test_reconfigureReplicaSet(self, mongoclient_mock):
-        mongoclient_mock.return_value.admin.command.return_value = self._getFixture("initiate-ok")
-
-        self.service.reconfigureReplicaSet(self.cluster_object)
+    def test_reconfigureReplicaSet(self, mongo_client_mock):
+        mongo_client_mock.return_value.admin.command.return_value = self._getFixture("initiate-ok")
+        self.service._reconfigureReplicaSet(self.cluster_object)
+        
         # expected_calls = [
         #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
         #     call().admin.command('replSetReconfig', self.expected_cluster_config)
         # ]
         # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test_reconfigureReplicaSet_ValueError(self, mongoclient_mock):
+    def test_reconfigureReplicaSet_ValueError(self, mongo_client_mock):
         command_result = self._getFixture("initiate-ok")
         command_result["ok"] = 2
-        mongoclient_mock.return_value.admin.command.return_value = command_result
+        mongo_client_mock.return_value.admin.command.return_value = command_result
 
         with self.assertRaises(ValueError) as context:
-            self.service.reconfigureReplicaSet(self.cluster_object)
+            self.service._reconfigureReplicaSet(self.cluster_object)
 
-        self.assertEqual("Unexpected response reconfiguring replica set mongo-cluster @ ns/" +
-                         self.cluster_object.metadata.namespace + ":\n" +
+        self.assertEqual("Unexpected response reconfiguring replica set mongo-cluster @ ns/mongo-operator-cluster:\n" +
                          str(self.initiate_not_found_response),
                          str(context.exception))
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test_checkReplicaSetOrInitialize_ok(self, mongoclient_mock):
-        mongoclient_mock.return_value.admin.command.return_value = self._getFixture("replica-status-ok")
-        self.service.checkReplicaSetOrInitialize(self.cluster_object)
+    def test_checkOrCreateReplicaSet_ok(self, mongo_client_mock):
+        mongo_client_mock.return_value.admin.command.return_value = self._getFixture("replica-status-ok")
+        self.service.checkOrCreateReplicaSet(self.cluster_object)
 
         # expected_calls = [
         #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
         #     call().admin.command('replSetGetStatus')
         # ]
-        # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
+        # self.assertEqual(expected_calls, mongo_client_mock.mock_calls)
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    @patch("mongoOperator.helpers.RestoreHelper.RestoreHelper.restoreIfNeeded")
-    def test_checkReplicaSetOrInitialize_initialize(self, restoreifneeded_mock, mongoclient_mock):
-        mongoclient_mock.return_value.admin.command.side_effect = (
+    def test_checkOrCreateReplicaSet_initialize(self, mongo_client_mock):
+        mongo_client_mock.return_value.admin.command.side_effect = (
             OperationFailure("no replset config has been received"),
-            self._getFixture("initiate-ok"))
-
-        self.service.checkReplicaSetOrInitialize(self.cluster_object)
+            self._getFixture("initiate-ok")
+        )
+        self.service.checkOrCreateReplicaSet(self.cluster_object)
 
         # expected_calls = [
         #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
@@ -248,17 +236,14 @@ class TestMongoService(TestCase):
         #
         # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test_checkReplicaSetOrInitialize_reconfigure(self, mongoclient_mock):
+    def test_checkOrCreateReplicaSet_reconfigure(self, mongo_client_mock):
         self.cluster_object.spec.mongodb.replicas = 4
-        mongoclient_mock.return_value.admin.command.return_value = self._getFixture("replica-status-ok")
-        self.service.checkReplicaSetOrInitialize(self.cluster_object)
-
-        cluster_config = self.expected_cluster_config
-        cluster_config["members"].append({"_id": 3, "host": "mongo-cluster-3.mongo-cluster." +
-                                                            self.cluster_object.metadata.namespace +
-                                                            ".svc.cluster.local"})
-        self.expected_cluster_config = cluster_config
+        mongo_client_mock.return_value.admin.command.return_value = self._getFixture("replica-status-ok")
+        self.service.checkOrCreateReplicaSet(self.cluster_object)
+        self.expected_cluster_config["members"].append({
+            "_id": 3,
+            "host": "mongo-cluster-3.mongo-cluster.mongo-cluster.svc.cluster.local"
+        })
 
         # expected_calls = [
         #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
@@ -267,36 +252,33 @@ class TestMongoService(TestCase):
         #     call().admin.command('replSetReconfig', self.expected_cluster_config)
         # ]
         #
-        # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
+        # self.assertEqual(expected_calls, mongo_client_mock.mock_calls)
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test_checkReplicaSetOrInitialize_ValueError(self, mongoclient_mock):
+    def test_checkOrCreateReplicaSet_ValueError(self, mongo_client_mock):
         response = self._getFixture("replica-status-ok")
         response["ok"] = 2
-
-        mongoclient_mock.return_value.admin.command.return_value = response
+        mongo_client_mock.return_value.admin.command.return_value = response
 
         with self.assertRaises(ValueError) as context:
-            self.service.checkReplicaSetOrInitialize(self.cluster_object)
+            self.service.checkOrCreateReplicaSet(self.cluster_object)
 
         # expected_calls = [
         #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
         #     call().admin.command('replSetGetStatus')
         # ]
         # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
+        
         self.assertIn("Unexpected response trying to check replicas: ", str(context.exception))
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    @patch("mongoOperator.helpers.RestoreHelper.RestoreHelper.restoreIfNeeded")
-    def test_checkReplicaSetOrInitialize_OperationalFailure(self, restoreifneeded_mock, mongoclient_mock):
-        badvalue = "BadValue: Unexpected field foo in replica set member configuration for member:" \
+    def test_checkOrCreateReplicaSet_OperationalFailure(self, mongo_client_mock):
+        bad_value = "BadValue: Unexpected field foo in replica set member configuration for member:" \
                    "{ _id: 0, foo: \"localhost:27017\" }"
-        mongoclient_mock.return_value.admin.command.side_effect = (
-            OperationFailure(badvalue),
-            OperationFailure(badvalue))
+        mongo_client_mock.return_value.admin.command.side_effect = (
+            OperationFailure(bad_value),
+            OperationFailure(bad_value))
 
         with self.assertRaises(OperationFailure) as context:
-            self.service.checkReplicaSetOrInitialize(self.cluster_object)
+            self.service.checkOrCreateReplicaSet(self.cluster_object)
         #
         # expected_calls = [
         #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
@@ -304,24 +286,22 @@ class TestMongoService(TestCase):
         # ]
         #
         # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
-        self.assertEqual(str(context.exception), badvalue)
+        
+        self.assertEqual(str(context.exception), bad_value)
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test_createUsers_ok(self, mongoclient_mock):
-        mongoclient_mock.return_value.admin.command.return_value = self._getFixture("createUser-ok")
-
+    def test_createUsers_ok(self, mongo_client_mock):
+        mongo_client_mock.return_value.admin.command.return_value = self._getFixture("createUser-ok")
         self.service.createUsers(self.cluster_object)
 
         # expected_calls = [
         #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
         #     call().admin.command("createUser", "root", **self.expected_user_create)
         # ]
-        # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
+        # self.assertEqual(expected_calls, mongo_client_mock.mock_calls)
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test_createUsers_ValueError(self, mongoclient_mock):
-        mongoclient_mock.return_value.admin.command.side_effect = OperationFailure("\"createUser\" had the wrong type."
-                                                                                   " Expected string, found object"),
+    def test_createUsers_ValueError(self, mongo_client_mock):
+        mongo_client_mock.return_value.admin.command.side_effect = OperationFailure(
+                "\"createUser\" had the wrong type. Expected string, found object"),
 
         with self.assertRaises(OperationFailure) as context:
             self.service.createUsers(self.cluster_object)
@@ -332,14 +312,14 @@ class TestMongoService(TestCase):
         # ]
         #
         # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
+        
         self.assertEqual("\"createUser\" had the wrong type. Expected string, found object", str(context.exception))
 
-    @patch("mongoOperator.services.MongoService.MongoClient")
-    def test_createUsers_TimeoutError(self, mongoclient_mock):
-        mongoclient_mock.return_value.admin.command.side_effect = (ConnectionFailure("connection attempt failed"),
-                                                                   ConnectionFailure("connection attempt failed"),
-                                                                   ConnectionFailure("connection attempt failed"),
-                                                                   ConnectionFailure("connection attempt failed"))
+    def test_createUsers_TimeoutError(self, mongo_client_mock):
+        mongo_client_mock.return_value.admin.command.side_effect = (
+            ConnectionFailure("connection attempt failed"), ConnectionFailure("connection attempt failed"),
+            ConnectionFailure("connection attempt failed"), ConnectionFailure("connection attempt failed")
+        )
 
         with self.assertRaises(TimeoutError) as context:
             self.service.createUsers(self.cluster_object)
@@ -349,5 +329,6 @@ class TestMongoService(TestCase):
         #     call().admin.command("createUser", "root", **self.expected_user_create)
         # ]
         #
-        # self.assertEqual(expected_calls, mongoclient_mock.mock_calls)
+        # self.assertEqual(expected_calls, mongo_client_mock.mock_calls)
+        
         self.assertEqual("Could not execute command after 4 retries!", str(context.exception))

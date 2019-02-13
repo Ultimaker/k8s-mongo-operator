@@ -136,18 +136,16 @@ class MongoService:
         raise ValueError("Unexpected response initializing replica set {} @ ns/{}:\n{}"
                          .format(cluster_name, namespace, create_replica_response))
         
-    def _createMongoClientForReplicaSet(self, replica_set_name: str, cluster_object: V1MongoClusterConfiguration
-                                        ) -> MongoClient:
+    def _createMongoClientForReplicaSet(self, cluster_object: V1MongoClusterConfiguration) -> MongoClient:
         """
         Creates a new MongoClient instance for a replica set.
-        :param replica_set_name: The name of the replica set.
         :return: The mongo client.
         """
         return MongoClient(
             MongoResources.getMemberHostnames(cluster_object),
             connectTimeoutMS = 60000,
             serverSelectionTimeoutMS = 60000,
-            replicaSet = replica_set_name,
+            replicaSet = cluster_object.metadata.name,
             event_listeners = [
                 CommandLogger(),
                 ServerLogger(),
@@ -189,11 +187,10 @@ class MongoService:
         """
         for _ in range(self.MONGO_COMMAND_RETRIES):
             try:
-                replica_set_name = cluster_object.metadata.name
-                if replica_set_name not in self._connected_replica_sets:
-                    self._connected_replica_sets[replica_set_name] = self._createMongoClientForReplicaSet(
-                            replica_set_name, cluster_object)
-                return self._connected_replica_sets[replica_set_name].admin.command(mongo_command, *args, **kwargs)
+                name = cluster_object.metadata.name
+                if name not in self._connected_replica_sets:
+                    self._connected_replica_sets[name] = self._createMongoClientForReplicaSet(cluster_object)
+                return self._connected_replica_sets[name].admin.command(mongo_command, *args, **kwargs)
             except ConnectionFailure as err:
                 logging.error("Exception while trying to connect to Mongo: %s", str(err))
             logging.info("Command timed out, waiting %s seconds before trying again (attempt %s/%s)",

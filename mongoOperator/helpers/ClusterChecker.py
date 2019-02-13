@@ -22,14 +22,14 @@ class ClusterChecker:
     STREAM_REQUEST_TIMEOUT = (15.0, 5.0)  # connect, read timeout
 
     def __init__(self) -> None:
-        self.cluster_versions: Dict[Tuple[str, str], str] = { }  # format: {(cluster_name, namespace): resource_version}
-        self.kubernetes_service = KubernetesService()
-        self.mongo_service = MongoService(self.kubernetes_service)
-        self.backup_checker = BackupChecker(self.kubernetes_service)
-        self.resource_checkers: List[BaseResourceChecker] = [
-            ServiceChecker(self.kubernetes_service),
-            StatefulSetChecker(self.kubernetes_service),
-            AdminSecretChecker(self.kubernetes_service),
+        self._cluster_versions: Dict[Tuple[str, str], str] = {}  # format: {(cluster_name, namespace): resource_version}
+        self._kubernetes_service = KubernetesService()
+        self._mongo_service = MongoService(self._kubernetes_service)
+        self._backup_checker = BackupChecker(self._kubernetes_service)
+        self._resource_checkers: List[BaseResourceChecker] = [
+            ServiceChecker(self._kubernetes_service),
+            StatefulSetChecker(self._kubernetes_service),
+            AdminSecretChecker(self._kubernetes_service),
         ]
 
     @staticmethod
@@ -53,7 +53,7 @@ class ClusterChecker:
         Check all Mongo objects and see if the sub objects are available.
         If they are not, they should be (re-)created to ensure the cluster is in the expected state.
         """
-        mongo_objects = self.kubernetes_service.listMongoObjects()
+        mongo_objects = self._kubernetes_service.listMongoObjects()
         logging.info("Checking %s mongo objects.", len(mongo_objects["items"]))
         for cluster_dict in mongo_objects["items"]:
             cluster_object = self._parseConfiguration(cluster_dict)
@@ -67,10 +67,10 @@ class ClusterChecker:
         event_watcher = Watch()
 
         # start watching from the latest version that we have
-        if self.cluster_versions:
-            event_watcher.resource_version = max(self.cluster_versions.values())
+        if self._cluster_versions:
+            event_watcher.resource_version = max(self._cluster_versions.values())
 
-        for event in event_watcher.stream(self.kubernetes_service.listMongoObjects,
+        for event in event_watcher.stream(self._kubernetes_service.listMongoObjects,
                                           _request_timeout = self.STREAM_REQUEST_TIMEOUT):
             logging.info("Received event %s", event)
 
@@ -97,7 +97,7 @@ class ClusterChecker:
         """
         Cleans up any resources that are left after a cluster has been removed.
         """
-        for checker in self.resource_checkers:
+        for checker in self._resource_checkers:
             checker.cleanResources()
 
     def checkCluster(self, cluster_object: V1MongoClusterConfiguration, force: bool = False) -> None:
@@ -108,16 +108,16 @@ class ClusterChecker:
         """
         key = (cluster_object.metadata.name, cluster_object.metadata.namespace)
         
-        if self.cluster_versions.get(key) == cluster_object.metadata.resource_version and not force:
+        if self._cluster_versions.get(key) == cluster_object.metadata.resource_version and not force:
             logging.debug("Cluster object %s has been checked already in version %s.",
                           key, cluster_object.metadata.resource_version)
             # we still want to check the replicas to make sure everything is working.
-            self.mongo_service.checkOrCreateReplicaSet(cluster_object)
+            self._mongo_service.checkOrCreateReplicaSet(cluster_object)
         else:
-            for checker in self.resource_checkers:
+            for checker in self._resource_checkers:
                 checker.checkResource(cluster_object)
-            self.mongo_service.checkOrCreateReplicaSet(cluster_object)
-            self.mongo_service.createUsers(cluster_object)
-            self.cluster_versions[key] = cluster_object.metadata.resource_version
+            self._mongo_service.checkOrCreateReplicaSet(cluster_object)
+            self._mongo_service.createUsers(cluster_object)
+            self._cluster_versions[key] = cluster_object.metadata.resource_version
 
-        self.backup_checker.backupIfNeeded(cluster_object)
+        self._backup_checker.backupIfNeeded(cluster_object)

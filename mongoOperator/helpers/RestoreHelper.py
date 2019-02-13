@@ -110,30 +110,27 @@ class RestoreHelper:
         :param cluster_object: The cluster object from the YAML file.
         :param backup_file: The filename of the backup we want to restore.
         """
-        hosts = MongoResources.getConnectionSeeds(cluster_object)
+        hostnames = MongoResources.getMemberHostnames(cluster_object)
 
-        logging.info("Restoring backup file %s to cluster %s @ ns/%s.", backup_file,
-                     cluster_object.metadata.name, cluster_object.metadata.namespace)
+        logging.info("Restoring backup file %s to cluster %s @ ns/%s.", backup_file, cluster_object.metadata.name,
+                     cluster_object.metadata.namespace)
 
         # Download the backup file from the bucket
         downloaded_file = self._downloadBackup(cluster_object, backup_file)
 
         for _ in range(self.RESTORE_RETRIES):
-            # Wait for the replicaset to become ready
-
+            # Wait for the replica set to become ready
             try:
-                logging.info("Running mongorestore --host %s --gzip --archive=%s", ','.join(hosts), downloaded_file)
-                restore_output = check_output(["mongorestore", "--host", ','.join(hosts), "--gzip",
+                logging.info("Running mongorestore --host %s --gzip --archive=%s", ','.join(hostnames), downloaded_file)
+                restore_output = check_output(["mongorestore", "--host", ','.join(hostnames), "--gzip",
                                                "--archive=" + downloaded_file])
                 logging.info("Restore output: %s", restore_output)
                 os.remove(downloaded_file)
                 return True
-
             except CalledProcessError as err:
                 logging.error("Could not restore '{}', attempt {}. Return code: {} stderr: '{}' stdout: '{}'"
                               .format(backup_file, _, err.returncode, err.stderr, err.stdout))
                 sleep(self.RESTORE_WAIT)
-
         raise SubprocessError("Could not restore '{}' after {} retries!".format(backup_file, self.RESTORE_RETRIES))
 
     def _downloadBackup(self, cluster_object: V1MongoClusterConfiguration, backup_file: str) -> str:
