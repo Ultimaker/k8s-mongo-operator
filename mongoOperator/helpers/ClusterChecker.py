@@ -85,6 +85,6 @@ class ClusterChecker:
             result.validate()
             return result
         except ValueError as err:
-            meta = cluster_dict.get("metadata", { })
+            meta = cluster_dict.get("metadata", {})
             logging.error("Could not validate cluster configuration for {} @ ns/{}: {}. The cluster will be ignored."
                           .format(meta.get("name"), meta.get("namespace"), err))
