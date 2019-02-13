@@ -2,7 +2,7 @@ apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
 metadata:
   name: mongo-operator-cluster-role
-  namespace: default
+  namespace: mongo-operator-cluster
 rules:
 - apiGroups: [""]
   resources: ["services"]

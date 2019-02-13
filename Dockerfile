@@ -22,7 +22,7 @@ RUN pip install -r requirements-testing.txt && \
     echo "unit-test" >> /var/run/secrets/kubernetes.io/serviceaccount/token && \
     echo "unit-test" >> /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
 ADD . .
-RUN ENV_NAME=testing ASYNC_TEST_TIMEOUT=15 coverage run --source="mongoOperator" -m pytest && \
+RUN ENV_NAME=testing ASYNC_TEST_TIMEOUT=15 coverage run --source="mongoOperator" -m pytest -vvx && \
     coverage report --skip-covered --show-missing  --fail-under=100
 
 # This is the container build statements that will create the container meant for deployment

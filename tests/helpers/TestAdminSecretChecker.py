@@ -38,7 +38,7 @@ class TestAdminSecretChecker(TestCase):
         result = self.checker.createResource(self.cluster_object)
         self.assertEqual(self.kubernetes_service.createSecret.return_value, result)
         self.kubernetes_service.createSecret.assert_called_once_with(
-            self.secret_name, "default", {"username": "root", "password": "random-password"}
+            self.secret_name, self.cluster_object.metadata.namespace, {"username": "root", "password": "random-password"}
         )
 
     @patch("mongoOperator.helpers.AdminSecretChecker.b64encode")
@@ -47,7 +47,7 @@ class TestAdminSecretChecker(TestCase):
         result = self.checker.updateResource(self.cluster_object)
         self.assertEqual(self.kubernetes_service.updateSecret.return_value, result)
         self.kubernetes_service.updateSecret.assert_called_once_with(
-            self.secret_name, "default", {"username": "root", "password": "random-password"}
+            self.secret_name, self.cluster_object.metadata.namespace, {"username": "root", "password": "random-password"}
         )
 
     def test_deleteResource(self):

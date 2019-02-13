@@ -4,6 +4,7 @@ metadata:
   labels:
     app: mongo-operator
   name: mongo-operator
+  namespace: mongo-operator-cluster
 spec:
   replicas: 1
   revisionHistoryLimit: 2

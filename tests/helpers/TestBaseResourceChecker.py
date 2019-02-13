@@ -56,22 +56,25 @@ class TestBaseResourceChecker(TestCase):
         self.kubernetes_service.getMongoObject.return_value = self.cluster_object
         self.checker.listResources = MagicMock(return_value=[self.cluster_object])
         self.checker.cleanResources()
-        self.assertEqual([call.getMongoObject('mongo-cluster', 'default')], self.kubernetes_service.mock_calls)
+        self.assertEqual([call.getMongoObject('mongo-cluster', self.cluster_object.metadata.namespace)],
+                         self.kubernetes_service.mock_calls)
 
     def test_cleanResources_not_found(self):
         self.kubernetes_service.getMongoObject.side_effect = ApiException(404)
         self.checker.listResources = MagicMock(return_value=[self.cluster_object])
         self.checker.deleteResource = MagicMock()
         self.checker.cleanResources()
-        self.assertEqual([call.getMongoObject('mongo-cluster', 'default')], self.kubernetes_service.mock_calls)
-        self.checker.deleteResource.assert_called_once_with('mongo-cluster', 'default')
+        self.assertEqual([call.getMongoObject('mongo-cluster', self.cluster_object.metadata.namespace)],
+                         self.kubernetes_service.mock_calls)
+        self.checker.deleteResource.assert_called_once_with('mongo-cluster', self.cluster_object.metadata.namespace)
 
     def test_cleanResources_error(self):
         self.kubernetes_service.getMongoObject.side_effect = ApiException(400)
         self.checker.listResources = MagicMock(return_value=[self.cluster_object])
         with self.assertRaises(ApiException):
             self.checker.cleanResources()
-        self.assertEqual([call.getMongoObject('mongo-cluster', 'default')], self.kubernetes_service.mock_calls)
+        self.assertEqual([call.getMongoObject('mongo-cluster', self.cluster_object.metadata.namespace)],
+                         self.kubernetes_service.mock_calls)
 
     def test_listResources(self):
         with self.assertRaises(NotImplementedError):

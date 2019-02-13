@@ -84,8 +84,8 @@ class TestKubernetesService(TestCase):
     
     def _createResourceLimits(self) -> V1ResourceRequirements:
         return V1ResourceRequirements(
-            limits = {"cpu": self.cpu_limit, "memory": self.memory_limit},
-            requests = {"cpu": self.cpu_limit, "memory": self.memory_limit}
+            limits={"cpu": self.cpu_limit, "memory": self.memory_limit},
+            requests={"cpu": self.cpu_limit, "memory": self.memory_limit}
         )
 
     def test___init__(self, client_mock):
@@ -472,14 +472,3 @@ class TestKubernetesService(TestCase):
         ]
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.AppsV1beta1Api().delete_namespaced_stateful_set.return_value, result)
-
-    @patch("mongoOperator.services.KubernetesService.stream")
-    def test_execInPod(self, stream_mock, client_mock):
-        service = KubernetesService()
-        client_mock.reset_mock()
-        result = service.execInPod("container", "pod_name", self.namespace, "ls")
-        stream_mock.assert_called_once_with(client_mock.CoreV1Api.return_value.connect_get_namespaced_pod_exec,
-                                            'pod_name', 'default', command='ls', container='container',
-                                            stderr=True, stdin=False, stdout=True, tty=False)
-        self.assertEqual(stream_mock.return_value, result)
-        self.assertEqual([], client_mock.mock_calls)

@@ -37,7 +37,7 @@ class TestBackupChecker(TestCase):
         # this backup is executed every hour at 0 minutes.
         self.assertEqual("0 * * * *", self.cluster_object.spec.backups.cron)
 
-        key = ('mongo-cluster', 'default')
+        key = ('mongo-cluster', self.cluster_object.metadata.namespace)
 
         expected_calls = []
         current_date = datetime(2018, 2, 28, 12, 30, 0)
@@ -81,14 +81,16 @@ class TestBackupChecker(TestCase):
     @patch("mongoOperator.helpers.BackupChecker.check_output")
     def test_backup(self, subprocess_mock, gcs_service_mock, storage_mock, os_mock):
         current_date = datetime(2018, 2, 28, 14, 0, 0)
-        expected_backup_name = "mongodb-backup-default-mongo-cluster-2018-02-28_140000.archive.gz"
+        expected_backup_name = "mongodb-backup-" + self.cluster_object.metadata.namespace +\
+                               "-mongo-cluster-2018-02-28_140000.archive.gz"
 
         self.checker.backup(self.cluster_object, current_date)
 
-        self.assertEqual([call.getSecret('storage-serviceaccount', 'default')], self.kubernetes_service.mock_calls)
+        self.assertEqual([call.getSecret('storage-serviceaccount', self.cluster_object.metadata.namespace)], self.kubernetes_service.mock_calls)
 
         subprocess_mock.assert_called_once_with([
-            'mongodump', '--host', 'mongo-cluster-2.mongo-cluster.default.svc.cluster.local', '--gzip',
+            'mongodump', '--host', 'mongo-cluster-2.mongo-cluster.' + self.cluster_object.metadata.namespace +
+                                   '.svc.cluster.local', '--gzip',
             '--archive=/tmp/' + expected_backup_name
         ])
 
@@ -116,8 +118,10 @@ class TestBackupChecker(TestCase):
         with self.assertRaises(SubprocessError) as context:
             self.checker.backup(self.cluster_object, current_date)
 
-        self.assertEqual("Could not backup 'mongo-cluster-2.mongo-cluster.default.svc.cluster.local' to "
-                         "'/tmp/mongodb-backup-default-mongo-cluster-2018-02-28_140000.archive.gz'. "
+        self.assertEqual("Could not backup 'mongo-cluster-2.mongo-cluster." + self.cluster_object.metadata.namespace +
+                         ".svc.cluster.local' to "
+                         "'/tmp/mongodb-backup-" + self.cluster_object.metadata.namespace +
+                         "-mongo-cluster-2018-02-28_140000.archive.gz'. "
                          "Return code: 3\n stderr: 'error'\n stdout: 'output'",
                          str(context.exception))
 

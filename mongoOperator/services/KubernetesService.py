@@ -261,15 +261,3 @@ class KubernetesService:
         body = V1DeleteOptions()
         logging.info("Deleting stateful set %s @ ns/%s.", name, namespace)
         return self.apps_api.delete_namespaced_stateful_set(name, namespace, body)
-
-    def execInPod(self, container, pod_name, namespace, exec_cmd) -> str:
-        """
-        Executes a command in the pod with the given name.
-        :param container: The container name.
-        :param pod_name: The pod name.
-        :param namespace: The pod namespace.
-        :param exec_cmd: The command to execute.
-        :return: The command output.
-        """
-        return stream(self.core_api.connect_get_namespaced_pod_exec, pod_name, namespace, command=exec_cmd,
-                      container=container, stderr=True, stdin=False, stdout=True, tty=False)

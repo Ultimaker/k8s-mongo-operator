@@ -2,7 +2,7 @@ apiVersion: "operators.ultimaker.com/v1"
 kind: Mongo
 metadata:
   name: mongo-cluster
-  namespace: default
+  namespace: mongo-operator-cluster
 spec:
   mongodb:
     replicas: 5  # Must be between 3 and 50

@@ -1,0 +1,1 @@
+{"ok": 1.0, "operationTime": {"$timestamp": {"t": 1549963040, "i": 1}}, "$clusterTime": {"clusterTime": {"$timestamp": {"t": 1549963040, "i": 1}}, "signature": {"hash": {"$binary": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=", "$type": "00"}, "keyId": 0}}}

@@ -7,14 +7,14 @@ import os
 from base64 import b64decode
 from subprocess import check_output, CalledProcessError, SubprocessError
 
-from datetime import datetime
+from time import sleep
 from google.cloud.storage import Client as StorageClient
 from google.oauth2.service_account import Credentials as ServiceCredentials
-from typing import Dict, Tuple
 
 from mongoOperator.helpers.MongoResources import MongoResources
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
+# from mongoOperator.services.MongoService import MongoService
 
 
 class RestoreHelper:
@@ -23,6 +23,8 @@ class RestoreHelper:
     """
     DEFAULT_BACKUP_PREFIX = "backups"
     BACKUP_FILE_FORMAT = "mongodb-backup-{namespace}-{name}-{date}.archive.gz"
+    RESTORE_RETRIES = 4
+    RESTORE_WAIT = 15.0
 
     def __init__(self, kubernetes_service: KubernetesService):
         """
@@ -78,7 +80,8 @@ class RestoreHelper:
             if last_blob is None or blob.time_created > last_blob.time_created:
                 last_blob = blob
 
-        return last_blob.name if last_blob else None
+        logging.info("Returning backup file %s", last_blob.name.replace(key, ""))
+        return last_blob.name.replace(key, "") if last_blob else None
 
     def restoreIfNeeded(self, cluster_object: V1MongoClusterConfiguration) -> bool:
         """
@@ -87,14 +90,12 @@ class RestoreHelper:
         :param cluster_object: The cluster object from the YAML file.
         :return: Whether a restore was executed or not.
         """
-        cluster_key = (cluster_object.metadata.name, cluster_object.metadata.namespace)
-        if hasattr(cluster_object.spec.backups.gcs, "restore_from"):
+        if cluster_object.spec.backups.gcs.restore_from is not None:
             backup_file = cluster_object.spec.backups.gcs.restore_from
-            print("backup_file", backup_file)
             if backup_file == 'latest':
                 backup_file = self.getLastBackup(cluster_object)
 
-            logging.info("Attempting to restore file %s to Cluster %s @ ns/%s.", backup_file,
+            logging.info("Attempting to restore file %s to cluster %s @ ns/%s.", backup_file,
                          cluster_object.metadata.name, cluster_object.metadata.namespace)
 
             self.restore(cluster_object, backup_file)
@@ -102,33 +103,38 @@ class RestoreHelper:
 
         return False
 
-    def restore(self, cluster_object: V1MongoClusterConfiguration, backup_file: str):
+    def restore(self, cluster_object: V1MongoClusterConfiguration, backup_file: str) -> bool:
         """
         Attempts to restore the latest backup in the specified location to the given cluster.
         Creates a new backup for the given cluster saving it in the cloud storage.
         :param cluster_object: The cluster object from the YAML file.
         :param backup_file: The filename of the backup we want to restore.
         """
-        pod_index = cluster_object.spec.mongodb.replicas - 1  # take last pod
-        hostname = MongoResources.getMemberHostname(pod_index, cluster_object.metadata.name,
-                                                    cluster_object.metadata.namespace)
+        hosts = MongoResources.getConnectionSeeds(cluster_object)
 
-        logging.info("Restoring backup file %s to cluster %s @ ns/%s on %s.", backup_file,
-                     cluster_object.metadata.name, cluster_object.metadata.namespace, hostname)
+        logging.info("Restoring backup file %s to cluster %s @ ns/%s.", backup_file,
+                     cluster_object.metadata.name, cluster_object.metadata.namespace)
 
         # Download the backup file from the bucket
         downloaded_file = self._downloadBackup(cluster_object, backup_file)
 
-        try:
-            restore_output = check_output(["mongorestore", "--host", hostname, "--gzip", "--archive",
-                                           downloaded_file])
-        except CalledProcessError as err:
-            raise SubprocessError("Could not restore '{}' to '{}'. Return code: {}\n stderr: '{}'\n stdout: '{}'"
-                                  .format(backup_file, hostname, err.returncode, err.stderr, err.stdout))
+        for _ in range(self.RESTORE_RETRIES):
+            # Wait for the replicaset to become ready
 
-        logging.debug("Restore output: %s", restore_output)
+            try:
+                logging.info("Running mongorestore --host %s --gzip --archive=%s", ','.join(hosts), downloaded_file)
+                restore_output = check_output(["mongorestore", "--host", ','.join(hosts), "--gzip",
+                                               "--archive=" + downloaded_file])
+                logging.info("Restore output: %s", restore_output)
+                os.remove(downloaded_file)
+                return True
 
-        os.remove(downloaded_file)
+            except CalledProcessError as err:
+                logging.error("Could not restore '{}', attempt {}. Return code: {} stderr: '{}' stdout: '{}'"
+                              .format(backup_file, _, err.returncode, err.stderr, err.stdout))
+                sleep(self.RESTORE_WAIT)
+
+        raise SubprocessError("Could not restore '{}' after {} retries!".format(backup_file, self.RESTORE_RETRIES))
 
     def _downloadBackup(self, cluster_object: V1MongoClusterConfiguration, backup_file: str) -> str:
         """
@@ -160,9 +166,9 @@ class RestoreHelper:
         credentials = ServiceCredentials.from_service_account_info(credentials)
         gcs_client = StorageClient(credentials.project_id, credentials)
         bucket = gcs_client.get_bucket(bucket_name)
+        logging.info("Going to download gcs://%s/%s", bucket_name, key)
+
         bucket.blob(key).download_to_filename(file_name)
-        print(repr(credentials))
-        print(repr(bucket_name))
 
         logging.info("Backup gcs://%s/%s downloaded to %s", bucket_name, key, file_name)
         return file_name
