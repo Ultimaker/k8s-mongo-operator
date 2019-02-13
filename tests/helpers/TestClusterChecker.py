@@ -1,7 +1,6 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-from copy import deepcopy
 from unittest import TestCase
 from unittest.mock import patch, call
 from mongoOperator.helpers.ClusterChecker import ClusterChecker
@@ -56,7 +55,6 @@ class TestClusterChecker(TestCase):
     @patch("mongoOperator.services.MongoService.MongoClient")
     @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
     def test_checkExistingClusters(self, backup_mock, mongo_client_mock):
-        # checkCluster will assume cached version
         self.checker._cluster_versions[("mongo-cluster", self.cluster_object.metadata.namespace)] = "100"
         self.kubernetes_service.listMongoObjects.return_value = {"items": [self.cluster_dict]}
         mongo_client_mock.return_value.admin.command.return_value = self._getMongoFixture("replica-status-ok")
@@ -78,20 +76,10 @@ class TestClusterChecker(TestCase):
     @patch("mongoOperator.services.MongoService.MongoClient")
     @patch("mongoOperator.helpers.BackupChecker.BackupChecker.backupIfNeeded")
     def test_checkCluster_same_version(self, backup_mock, mongo_client_mock):
-        # checkCluster will assume cached version
         self.checker._cluster_versions[("mongo-cluster", "mongo-operator-cluster")] = "100"
         mongo_client_mock.return_value.admin.command.return_value = self._getMongoFixture("replica-status-ok")
         self.checker._checkCluster(self.cluster_object)
         self.assertEqual({("mongo-cluster", "mongo-operator-cluster"): "100"}, self.checker._cluster_versions)
-
-        # expected = [
-        #     call(MongoResources.getConnectionSeeds(self.cluster_object), replicaSet=self.cluster_object.metadata.name),
-        #     call().admin.command('replSetGetStatus')
-        # ]
-        # print("actual:", repr(mongoclient_mock.mock_calls))
-        # print("expected:", repr(expected))
-        # self.assertEqual(expected, mongoclient_mock.mock_calls)
-        
         backup_mock.assert_called_once_with(self.cluster_object)
 
     @patch("mongoOperator.services.MongoService.MongoClient")
