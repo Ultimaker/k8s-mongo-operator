@@ -2,9 +2,9 @@
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
 import logging
+from typing import Dict, List, Tuple, Optional
 
 from kubernetes.watch import Watch
-from typing import Dict, List, Tuple, Optional
 
 from mongoOperator.helpers.AdminSecretChecker import AdminSecretChecker
 from mongoOperator.helpers.BackupChecker import BackupChecker
@@ -17,25 +17,20 @@ from mongoOperator.services.MongoService import MongoService
 
 
 class ClusterChecker:
-    """
-    Manager that periodically checks the status of the MongoDB objects in the cluster.
-    """
+    """ Manager that periodically checks the status of the MongoDB objects in the cluster. """
 
     STREAM_REQUEST_TIMEOUT = (15.0, 5.0)  # connect, read timeout
 
-    def __init__(self):
+    def __init__(self) -> None:
+        self.cluster_versions: Dict[Tuple[str, str], str] = { }  # format: {(cluster_name, namespace): resource_version}
         self.kubernetes_service = KubernetesService()
         self.mongo_service = MongoService(self.kubernetes_service)
-
-        self.resource_checkers = [
+        self.backup_checker = BackupChecker(self.kubernetes_service)
+        self.resource_checkers: List[BaseResourceChecker] = [
             ServiceChecker(self.kubernetes_service),
             StatefulSetChecker(self.kubernetes_service),
             AdminSecretChecker(self.kubernetes_service),
-        ]  # type: List[BaseResourceChecker]
-
-        self.backup_checker = BackupChecker(self.kubernetes_service)
-
-        self.cluster_versions = {}  # type: Dict[Tuple[str, str], str]  # format: {(cluster_name, namespace): resource_version}
+        ]
 
     @staticmethod
     def _parseConfiguration(cluster_dict: Dict[str, any]) -> Optional[V1MongoClusterConfiguration]:
@@ -95,8 +90,8 @@ class ClusterChecker:
 
             # Change the resource version manually because of a bug fixed in a later version of the K8s client:
             # https://github.com/kubernetes-client/python-base/pull/64
-            if isinstance(event.get('object'), dict) and 'resourceVersion' in event['object'].get('metadata', {}):
-                event_watcher.resource_version = event['object']['metadata']['resourceVersion']
+            if isinstance(event.get("object"), dict) and "resourceVersion" in event["object"].get("metadata", {}):
+                event_watcher.resource_version = event["object"]["metadata"]["resourceVersion"]
 
     def collectGarbage(self) -> None:
         """
@@ -117,11 +112,11 @@ class ClusterChecker:
             logging.debug("Cluster object %s has been checked already in version %s.",
                           key, cluster_object.metadata.resource_version)
             # we still want to check the replicas to make sure everything is working.
-            self.mongo_service.checkReplicaSetOrInitialize(cluster_object)
+            self.mongo_service.checkOrCreateReplicaSet(cluster_object)
         else:
             for checker in self.resource_checkers:
                 checker.checkResource(cluster_object)
-            self.mongo_service.checkReplicaSetOrInitialize(cluster_object)
+            self.mongo_service.checkOrCreateReplicaSet(cluster_object)
             self.mongo_service.createUsers(cluster_object)
             self.cluster_versions[key] = cluster_object.metadata.resource_version
 
