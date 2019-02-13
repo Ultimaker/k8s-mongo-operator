@@ -115,6 +115,7 @@ class TestRestoreHelper(TestCase):
 
         self.assertEqual("Could not restore '" + expected_backup_name + "' after 4 retries!", str(context.exception))
         self.assertEqual(4, subprocess_mock.call_count)
+        # TODO: assert calls on unused mocks
 
     @patch("mongoOperator.helpers.RestoreHelper.check_output")
     def test_restore_gcs_bad_credentials(self, subprocess_mock):
