@@ -57,7 +57,7 @@ class ClusterChecker:
         :param cluster_object: The cluster object from the YAML file.
         :param force: If this is True, we will re-update the cluster even if it has been checked before.
         """
-        key = (cluster_object.metadata.name, cluster_object.metadata.namespace)
+        key = cluster_object.metadata.name, cluster_object.metadata.namespace
         
         if self._cluster_versions.get(key) == cluster_object.metadata.resource_version and not force:
             logging.debug("Cluster object %s has been checked already in version %s.",
