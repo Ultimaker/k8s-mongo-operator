@@ -23,9 +23,13 @@ class ServerEventMock:
 
 
 class TestServerLogger(TestCase):
+    server_logger = ServerLogger()
     
-    def test_serverLogger(self):
-        command_logger = ServerLogger()
-        command_logger.opened(event = cast(ServerOpeningEvent, ServerEventMock()))
-        command_logger.closed(event = cast(ServerClosedEvent, ServerEventMock()))
-        command_logger.description_changed(event = cast(ServerDescriptionChangedEvent, ServerEventMock()))
+    def test_opened(self):
+        self.server_logger.opened(event = cast(ServerOpeningEvent, ServerEventMock()))
+    
+    def test_closed(self):
+        self.server_logger.closed(event = cast(ServerClosedEvent, ServerEventMock()))
+        
+    def test_description_changed(self):
+        self.server_logger.description_changed(event = cast(ServerDescriptionChangedEvent, ServerEventMock()))

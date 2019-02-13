@@ -18,9 +18,13 @@ class CommandEventMock:
     
 
 class TestCommandLogger(TestCase):
+    command_logger = CommandLogger()
 
-    def test_commandLogger(self):
-        command_logger = CommandLogger()
-        command_logger.started(event = cast(CommandStartedEvent, CommandEventMock()))
-        command_logger.succeeded(event = cast(CommandSucceededEvent, CommandEventMock()))
-        command_logger.failed(event = cast(CommandFailedEvent, CommandEventMock()))
+    def test_started(self):
+        self.command_logger.started(event = cast(CommandStartedEvent, CommandEventMock()))
+        
+    def test_succeeded(self):
+        self.command_logger.succeeded(event = cast(CommandSucceededEvent, CommandEventMock()))
+        
+    def test_failed(self):
+        self.command_logger.failed(event = cast(CommandFailedEvent, CommandEventMock()))
