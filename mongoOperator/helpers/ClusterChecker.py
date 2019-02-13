@@ -4,8 +4,6 @@
 import logging
 from typing import Dict, List, Tuple, Optional
 
-from kubernetes.watch import Watch
-
 from mongoOperator.helpers.AdminSecretChecker import AdminSecretChecker
 from mongoOperator.helpers.BackupChecker import BackupChecker
 from mongoOperator.helpers.BaseResourceChecker import BaseResourceChecker
