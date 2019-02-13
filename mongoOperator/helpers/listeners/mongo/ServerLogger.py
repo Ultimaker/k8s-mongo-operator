@@ -26,8 +26,7 @@ class ServerLogger(ServerListener):
         if new_server_type != previous_server_type:
             # server_type_name was added in PyMongo 3.4
             logging.debug(
-                "Server {0.server_address} changed type from "
-                "{0.previous_description.server_type_name} to "
+                "Server {0.server_address} changed type from {0.previous_description.server_type_name} to "
                 "{0.new_description.server_type_name}".format(event))
 
     def closed(self, event: ServerClosedEvent) -> None:
