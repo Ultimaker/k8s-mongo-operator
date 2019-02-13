@@ -44,39 +44,6 @@ class ClusterChecker:
             if cluster_object:
                 self._checkCluster(cluster_object)
 
-    def streamEvents(self) -> None:
-        """
-        Watches for changes to the mongo objects in Kubernetes and processes any changes immediately.
-        """
-        event_watcher = Watch()
-
-        # start watching from the latest version that we have
-        if self._cluster_versions:
-            event_watcher.resource_version = max(self._cluster_versions.values())
-
-        for event in event_watcher.stream(self._kubernetes_service.listMongoObjects,
-                                          _request_timeout = self.STREAM_REQUEST_TIMEOUT):
-            logging.info("Received event %s", event)
-
-            if event["type"] in ("ADDED", "MODIFIED"):
-                cluster_object = self._parseConfiguration(event["object"])
-                if cluster_object:
-                    self._checkCluster(cluster_object)
-                else:
-                    logging.warning("Could not validate cluster object, stopping event watcher.")
-                    event_watcher.stop = True
-            elif event["type"] in ("DELETED",):
-                self.collectGarbage()
-
-            else:
-                logging.warning("Could not parse event, stopping event watcher.")
-                event_watcher.stop = True
-
-            # Change the resource version manually because of a bug fixed in a later version of the K8s client:
-            # https://github.com/kubernetes-client/python-base/pull/64
-            if isinstance(event.get("object"), dict) and "resourceVersion" in event["object"].get("metadata", {}):
-                event_watcher.resource_version = event["object"]["metadata"]["resourceVersion"]
-
     def collectGarbage(self) -> None:
         """
         Cleans up any resources that are left after a cluster has been removed.

@@ -68,53 +68,6 @@ class TestClusterChecker(TestCase):
         self.assertEqual(expected, self.kubernetes_service.mock_calls)
         backup_mock.assert_called_once_with(self.cluster_object)
 
-    @patch("mongoOperator.helpers.ClusterChecker.ClusterChecker._checkCluster")
-    @patch("kubernetes.watch.watch.Watch.stream")
-    def test_streamEvents_add_update(self, stream_mock, check_mock):
-        updated_cluster = deepcopy(self.cluster_dict)
-        updated_cluster["spec"]["mongodb"]["replicas"] = 5
-        updated_cluster["metadata"]["resource_version"] = "200"
-        stream_mock.return_value = [
-            {"type": "ADDED", "object": self.cluster_dict},
-            {"type": "MODIFIED", "object": updated_cluster},
-        ]
-
-        self.checker.streamEvents()
-
-        self.assertEqual([call(self.cluster_object), call(V1MongoClusterConfiguration(**updated_cluster))],
-                         check_mock.mock_calls)
-        stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects,
-                                            _request_timeout=self.checker.STREAM_REQUEST_TIMEOUT)
-
-    @patch("mongoOperator.helpers.ClusterChecker.Watch")
-    def test_streamEvents_bad_event(self, watch_mock):
-        stream_mock = watch_mock.return_value.stream
-        stream_mock.return_value = [{"type": "UNKNOWN", "object": self.cluster_dict}]
-        self.checker.streamEvents()
-        stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects,
-                                            _request_timeout=self.checker.STREAM_REQUEST_TIMEOUT)
-        self.assertTrue(watch_mock.return_value.stop)
-
-    @patch("mongoOperator.helpers.ClusterChecker.ClusterChecker.collectGarbage")
-    @patch("kubernetes.watch.watch.Watch.stream")
-    def test_streamEvents_delete(self, stream_mock, garbage_mock):
-        stream_mock.return_value = [{"type": "DELETED"}]
-        self.checker.streamEvents()
-        garbage_mock.assert_called_once_with()
-        stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects,
-                                            _request_timeout = self.checker.STREAM_REQUEST_TIMEOUT)
-
-    @patch("mongoOperator.helpers.ClusterChecker.Watch")
-    def test_streamEvents_bad_cluster(self, watch_mock):
-        self.checker._cluster_versions[("mongo-cluster", "default")] = "100"
-        stream_mock = watch_mock.return_value.stream
-        stream_mock.return_value = [{"type": "ADDED", "object": {"thisIsNot": "a_cluster"}}]
-        self.checker.streamEvents()
-        stream_mock.assert_called_once_with(self.kubernetes_service.listMongoObjects,
-                                            _request_timeout=self.checker.STREAM_REQUEST_TIMEOUT)
-        self.assertTrue(watch_mock.return_value.stop)
-        self.assertEqual("100", watch_mock.return_value.resource_version)
-
     @patch("mongoOperator.helpers.BaseResourceChecker.BaseResourceChecker.cleanResources")
     @patch("mongoOperator.helpers.BaseResourceChecker.BaseResourceChecker.listResources")
     def test_collectGarbage(self, list_mock, clean_mock):
