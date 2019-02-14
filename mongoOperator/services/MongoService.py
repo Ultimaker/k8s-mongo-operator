@@ -149,8 +149,8 @@ class MongoService:
             event_listeners = [
                 CommandLogger(),
                 ServerLogger(),
-                TopologyListener(cluster_object, replica_set_ready_callback = self._onReplicaSetReady),
-                HeartbeatListener(cluster_object, all_hosts_ready_callback = self._onAllHostsReady)
+                TopologyListener(cluster_object, replica_set_ready_callback=self._onReplicaSetReady),
+                HeartbeatListener(cluster_object, all_hosts_ready_callback=self._onAllHostsReady)
             ]
         )
 

@@ -44,7 +44,7 @@ class HeartbeatListener(ServerHeartbeatListener):
             # The callback was already executed so we don't have to again.
             logging.debug("The callback was already executed")
             return
-        
+
         host_count_found = len(list(filter(lambda x: self._hosts[x] == 1, self._hosts)))
         if self._expected_host_count != host_count_found:
             # The amount of returned hosts was different than expected.
@@ -52,7 +52,7 @@ class HeartbeatListener(ServerHeartbeatListener):
                 host_count_found, self._expected_host_count
             ))
             return
-            
+
         if "info" in event.reply.document and event.reply.document["info"] == self.INVALID_REPLICA_SET_CONFIG:
             # The reply indicated that the replica set config was not correct.
             logging.debug("The replica set config was not correct: {}".format(repr(event.reply)))

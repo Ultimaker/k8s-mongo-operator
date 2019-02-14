@@ -25,6 +25,10 @@ ADD . .
 RUN ENV_NAME=testing ASYNC_TEST_TIMEOUT=15 coverage run --source="mongoOperator" -m pytest -vvx && \
     coverage report --skip-covered --show-missing  --fail-under=100
 
+# Linting
+RUN flake8 . --count
+RUN pylint stardustAuthServerApi --rcfile=lib/stardustCommons/.pylintrc
+
 # This is the container build statements that will create the container meant for deployment
 FROM base AS build
 WORKDIR /usr/src/app

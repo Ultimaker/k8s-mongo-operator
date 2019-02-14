@@ -6,7 +6,6 @@ from time import sleep
 from unittest.mock import patch
 
 from kubernetes.client.rest import ApiException
-from kubernetes.stream import stream
 from typing import Dict, Optional
 
 import yaml

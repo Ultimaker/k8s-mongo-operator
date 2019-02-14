@@ -26,10 +26,12 @@ class TestServerLogger(TestCase):
     server_logger = ServerLogger()
     
     def test_opened(self):
-        self.server_logger.opened(event = cast(ServerOpeningEvent, ServerEventMock()))
+        self.server_logger.opened(event=cast(ServerOpeningEvent, ServerEventMock()))
     
     def test_closed(self):
-        self.server_logger.closed(event = cast(ServerClosedEvent, ServerEventMock()))
+        self.server_logger.closed(event=cast(ServerClosedEvent, ServerEventMock()))
         
     def test_description_changed(self):
-        self.server_logger.description_changed(event = cast(ServerDescriptionChangedEvent, ServerEventMock()))
+        serverEventMock = ServerEventMock()
+        serverEventMock.new_description.server_type = "bar"
+        self.server_logger.description_changed(event=cast(ServerDescriptionChangedEvent, serverEventMock))
