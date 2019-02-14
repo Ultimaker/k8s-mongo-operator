@@ -21,7 +21,7 @@ from mongoOperator.services.KubernetesService import KubernetesService
 
 class MongoService:
     """ Bundled methods for interacting with MongoDB. """
-    
+
     # name of the container
     CONTAINER = "mongodb"
     NO_REPLICA_SET_RESPONSE = "no replset config has been received"
@@ -53,11 +53,11 @@ class MongoService:
         try:
             create_status_response = self._executeAdminCommand(cluster_object, create_status_command)
             logging.debug("Checking replicas, received %s", repr(create_status_response))
-            
+
             # The replica set could not be checked
             if create_status_response["ok"] != 1:
                 raise ValueError("Unexpected response trying to check replicas: '{}'".format(
-                        repr(create_status_response)))
+                    repr(create_status_response)))
 
             logging.info("The replica set %s @ ns/%s seems to be working properly with %s/%s pods.",
                          cluster_name, namespace, len(create_status_response["members"]), replicas)
@@ -123,19 +123,19 @@ class MongoService:
         """
         cluster_name = cluster_object.metadata.name
         namespace = cluster_object.metadata.namespace
-    
+
         master_connection = MongoClient(MongoResources.getMemberHostname(0, cluster_name, namespace))
         create_replica_command, create_replica_args = MongoResources.createReplicaInitiateCommand(cluster_object)
         create_replica_response = master_connection.admin.command(create_replica_command, create_replica_args)
-    
+
         if create_replica_response["ok"] == 1:
             logging.info("Initialized replica set %s @ ns/%s", cluster_name, namespace)
             return
-    
+
         logging.error("Initializing replica set failed, received %s", repr(create_replica_response))
         raise ValueError("Unexpected response initializing replica set {} @ ns/{}:\n{}"
                          .format(cluster_name, namespace, create_replica_response))
-        
+
     def _createMongoClientForReplicaSet(self, cluster_object: V1MongoClusterConfiguration) -> MongoClient:
         """
         Creates a new MongoClient instance for a replica set.

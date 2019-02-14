@@ -91,7 +91,7 @@ class RestoreHelper:
         """
         if cluster_object.spec.backups.gcs.restore_from is not None:
             backup_file = cluster_object.spec.backups.gcs.restore_from
-            if backup_file == 'latest':
+            if backup_file == "latest":
                 backup_file = self.getLastBackup(cluster_object)
 
             logging.info("Attempting to restore file %s to cluster %s @ ns/%s.", backup_file,
@@ -120,15 +120,15 @@ class RestoreHelper:
         for _ in range(self.RESTORE_RETRIES):
             # Wait for the replica set to become ready
             try:
-                logging.info("Running mongorestore --host %s --gzip --archive=%s", ','.join(hostnames), downloaded_file)
-                restore_output = check_output(["mongorestore", "--host", ','.join(hostnames), "--gzip",
+                logging.info("Running mongorestore --host %s --gzip --archive=%s", ",".join(hostnames), downloaded_file)
+                restore_output = check_output(["mongorestore", "--host", ",".join(hostnames), "--gzip",
                                                "--archive=" + downloaded_file])
                 logging.info("Restore output: %s", restore_output)
                 os.remove(downloaded_file)
                 return True
             except CalledProcessError as err:
-                logging.error("Could not restore '{}', attempt {}. Return code: {} stderr: '{}' stdout: '{}'"
-                              .format(backup_file, _, err.returncode, err.stderr, err.stdout))
+                logging.error("Could not restore '%s', attempt %d. Return code: %s stderr: '%s' stdout: '%s'",
+                              backup_file, _, err.returncode, err.stderr, err.stdout)
                 sleep(self.RESTORE_WAIT)
         raise SubprocessError("Could not restore '{}' after {} retries!".format(backup_file, self.RESTORE_RETRIES))
 
@@ -140,11 +140,10 @@ class RestoreHelper:
         :return: The location of the downloaded file.
         """
         prefix = cluster_object.spec.backups.gcs.prefix or self.DEFAULT_BACKUP_PREFIX
+        restore_bucket = cluster_object.spec.backups.gcs.restore_bucket or cluster_object.spec.backups.gcs.bucket
         return self._downloadFile(
             credentials=self._getCredentials(cluster_object),
-            bucket_name=cluster_object.spec.backups.gcs.restore_bucket \
-                    if cluster_object.spec.backups.gcs.restore_bucket \
-                    else cluster_object.spec.backups.gcs.bucket,
+            bucket_name=restore_bucket,
             key="{}/{}".format(prefix, backup_file),
             file_name="/tmp/" + backup_file
         )

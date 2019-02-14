@@ -21,7 +21,8 @@ class MongoResources:
         :param namespace: The namespace of the cluster.
         :return: The name of the host.
         """
-        return "{}-{}.{}.{}.svc.cluster.local".format(cluster_name, pod_index, cluster_name, namespace)
+        return "{cluster_name}-{}.{cluster_name}.{}.svc.cluster.local".format(pod_index, namespace,
+                                                                              cluster_name=cluster_name)
 
     @classmethod
     def getMemberHostnames(cls, cluster_object: V1MongoClusterConfiguration) -> List[str]:

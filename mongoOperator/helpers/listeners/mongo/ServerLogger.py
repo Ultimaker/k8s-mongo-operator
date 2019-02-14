@@ -14,7 +14,7 @@ class ServerLogger(ServerListener):
         When the server was added to the network.
         :param event: The event.
         """
-        logging.debug("Server {0.server_address} added to topology {0.topology_id}".format(event))
+        logging.debug("Server %s added to topology %s", event.server_address, event.topology_id)
 
     def description_changed(self, event: ServerDescriptionChangedEvent) -> None:
         """
@@ -25,13 +25,13 @@ class ServerLogger(ServerListener):
         new_server_type = event.new_description.server_type
         if new_server_type != previous_server_type:
             # server_type_name was added in PyMongo 3.4
-            logging.debug(
-                "Server {0.server_address} changed type from {0.previous_description.server_type_name} to "
-                "{0.new_description.server_type_name}".format(event))
+            logging.debug("Server %s changed type from %s to %s", event.server_address,
+                          event.previous_description.server_type_name, event.new_description.server_type_name)
 
     def closed(self, event: ServerClosedEvent) -> None:
         """
         When the server was removed from the network.
         :param event: The event.
         """
-        logging.debug("Server {0.server_address} removed from topology {0.topology_id}".format(event))
+        logging.debug("Server %s removed from topology %s",
+                      event.server_address, event.topology_id)

@@ -109,6 +109,6 @@ class MongoReplicaCountField(Field):
     amount of MongoDB replicas. It raises a `ValueError` if the validation fails.
     """
     def parse(self, value: int):
-        if not isinstance(value, int) or not (3 <= value <= 50):
+        if not isinstance(value, int) or not 3 <= value <= 50:
             raise ValueError("The amount of replica sets must be between 3 and 50 (got {}).".format(repr(value)))
         return super().parse(value)

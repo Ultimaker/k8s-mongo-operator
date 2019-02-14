@@ -23,21 +23,22 @@ class TopologyListener(MongoTopologyListener):
         When a topology opened.
         :param event: The event.
         """
-        logging.debug("Topology with id {0.topology_id} opened".format(event))
+        logging.debug("Topology with id %s opened", event.topology_id)
 
     def description_changed(self, event: TopologyDescriptionChangedEvent) -> None:
         """
         When the description of a topology changed.
         :param event: The event.
         """
-        logging.debug("Topology description updated for topology id {0.topology_id}".format(event))
+        logging.debug("Topology description updated for topology id %s", event.topology_id)
 
         previous_topology_type = event.previous_description.topology_type
         new_topology_type = event.new_description.topology_type
         if new_topology_type != previous_topology_type:
             # topology_type_name was added in PyMongo 3.4
-            logging.debug("Topology {0.topology_id} changed type from {0.previous_description.topology_type_name} to "
-                          "{0.new_description.topology_type_name}".format(event))
+            logging.debug("Topology %s changed type from %s to %s", event.topology_id,
+                          event.previous_description.topology_type_name,
+                          event.new_description.topology_type_name)
 
         # The has_writable_server and has_readable_server methods were added in PyMongo 3.4.
         if not event.new_description.has_writable_server():
@@ -56,5 +57,4 @@ class TopologyListener(MongoTopologyListener):
         When topology was closed.
         :param event: The event.
         """
-        logging.debug("Topology with id {0.topology_id} closed".format(event))
-
+        logging.debug("Topology with id %s closed", event.topology_id)

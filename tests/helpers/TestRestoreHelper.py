@@ -79,7 +79,7 @@ class TestRestoreHelper(TestCase):
 
         self.restore_helper.restore(self.cluster_object, expected_backup_name)
 
-        self.assertEqual([call.getSecret("storage-serviceaccount",  "mongo-operator-cluster")],
+        self.assertEqual([call.getSecret("storage-serviceaccount", "mongo-operator-cluster")],
                          self.kubernetes_service.mock_calls)
 
         subprocess_mock.assert_called_once_with([
@@ -120,9 +120,9 @@ class TestRestoreHelper(TestCase):
     @patch("mongoOperator.helpers.RestoreHelper.check_output")
     def test_restore_gcs_bad_credentials(self, subprocess_mock):
         expected_backup_name = "mongodb-backup-mongo-cluster-mongo-cluster-2018-02-28_140000.archive.gz"
-        
+
         with self.assertRaises(ValueError) as context:
             self.restore_helper.restore(self.cluster_object, expected_backup_name)
-            
+
         self.assertIn("Service account info was not in the expected format", str(context.exception))
         self.assertEqual(0, subprocess_mock.call_count)

@@ -51,5 +51,3 @@ class TestTopologyLogger(TestCase):
         topology_logger = TopologyListener(self.cluster_object,
                                            replica_set_ready_callback=self._onReplicaSetReadyCallback)
         topology_logger.closed(event=cast(TopologyClosedEvent, Mock(spec=TopologyClosedEvent)))
-
-

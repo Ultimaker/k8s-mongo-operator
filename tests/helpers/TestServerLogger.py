@@ -12,7 +12,7 @@ from mongoOperator.helpers.listeners.mongo.ServerLogger import ServerLogger
 class ServerDescriptionEventMock:
     server_type = "foo"
     server_type_name = "foo"
-    
+
 
 class ServerEventMock:
     """ Mock implementation of a ServerEvent. """
@@ -24,13 +24,13 @@ class ServerEventMock:
 
 class TestServerLogger(TestCase):
     server_logger = ServerLogger()
-    
+
     def test_opened(self):
         self.server_logger.opened(event=cast(ServerOpeningEvent, ServerEventMock()))
-    
+
     def test_closed(self):
         self.server_logger.closed(event=cast(ServerClosedEvent, ServerEventMock()))
-        
+
     def test_description_changed(self):
         serverEventMock = ServerEventMock()
         serverEventMock.new_description.server_type = "bar"

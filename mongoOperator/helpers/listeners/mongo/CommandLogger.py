@@ -14,21 +14,21 @@ class CommandLogger(CommandListener):
         When a command was started.
         :param event: The event.
         """
-        logging.debug("Command {0.command_name} with request id {0.request_id} started on server {0.connection_id}"
-                      .format(event))
+        logging.debug("Command %s with request id %s started on server %s",
+                      event.command_name, event.request_id, event.connection_id)
 
     def succeeded(self, event: CommandSucceededEvent) -> None:
         """
         When a command succeeded.
         :param event: The event.
         """
-        logging.debug("Command {0.command_name} with request id {0.request_id} on server {0.connection_id} succeeded "
-                      "in {0.duration_micros} microseconds".format(event))
+        logging.debug("Command %s with request id %s on server %s succeeded in %s microseconds",
+                      event.command_name, event.request_id, event.connection_id, event.duration_micros)
 
     def failed(self, event: CommandFailedEvent) -> None:
         """
         When a command failed.
         :param event: The event.
         """
-        logging.debug("Command {0.command_name} with request id {0.request_id} on server {0.connection_id} failed in "
-                      "{0.duration_micros} microseconds".format(event))
+        logging.debug("Command %s with request id %s on server %s failed in %s microseconds",
+                      event.command_name, event.request_id, event.connection_id, event.duration_micros)

@@ -47,17 +47,17 @@ class TestMongoService(TestCase):
             "codeName": "NotYetInitialized"
         }
 
-        self.initiate_ok_response = loads('''
-            {"ok": 1.0, "operationTime": {"$timestamp": {"t": 1549963040, "i": 1}}, "$clusterTime": {"clusterTime": 
-            {"$timestamp": {"t": 1549963040, "i": 1}}, "signature": {"hash": {"$binary": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=", 
+        self.initiate_ok_response = loads("""
+            {"ok": 1.0, "operationTime": {"$timestamp": {"t": 1549963040, "i": 1}}, "$clusterTime": {"clusterTime":
+            {"$timestamp": {"t": 1549963040, "i": 1}}, "signature": {"hash": {"$binary": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             "$type": "00"}, "keyId": 0}}}
-        ''')
+        """)
 
-        self.initiate_not_found_response = loads('''
-            {"ok": 2, "operationTime": {"$timestamp": {"t": 1549963040, "i": 1}}, "$clusterTime": {"clusterTime": 
-            {"$timestamp": {"t": 1549963040, "i": 1}}, "signature": {"hash": {"$binary": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=", 
+        self.initiate_not_found_response = loads("""
+            {"ok": 2, "operationTime": {"$timestamp": {"t": 1549963040, "i": 1}}, "$clusterTime": {"clusterTime":
+            {"$timestamp": {"t": 1549963040, "i": 1}}, "signature": {"hash": {"$binary": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
             "$type": "00"}, "keyId": 0}}}
-        ''')
+        """)
 
         self.expected_cluster_config = {
             "_id": "mongo-cluster",
@@ -86,8 +86,8 @@ class TestMongoService(TestCase):
 
     def test__mongoAdminCommand_NodeNotFound(self, mongo_client_mock):
         mongo_client_mock.return_value.admin.command.side_effect = OperationFailure(
-                "replSetInitiate quorum check failed because not all proposed set members responded affirmatively:")
-        
+            "replSetInitiate quorum check failed because not all proposed set members responded affirmatively:")
+
         with self.assertRaises(OperationFailure) as ex:
             mongo_command, mongo_args = MongoResources.createReplicaInitiateCommand(self.cluster_object)
             self.service._executeAdminCommand(self.cluster_object, mongo_command, mongo_args)
@@ -110,7 +110,7 @@ class TestMongoService(TestCase):
             ConnectionFailure("connection attempt failed"),
             OperationFailure("no replset config has been received")
         )
-        
+
         with self.assertRaises(TimeoutError) as context:
             self.service._executeAdminCommand(self.cluster_object, "replSetGetStatus")
 
@@ -134,13 +134,12 @@ class TestMongoService(TestCase):
         command_result = self._getFixture("initiate-ok")
         command_result["ok"] = 2
         mongo_client_mock.return_value.admin.command.return_value = command_result
-        
+
         with self.assertRaises(ValueError) as context:
             self.service._initializeReplicaSet(self.cluster_object)
 
-        self.assertEqual("Unexpected response initializing replica set mongo-cluster @ ns/" +
-                         self.cluster_object.metadata.namespace + ":\n" +
-                         str(self.initiate_not_found_response),
+        self.assertEqual("Unexpected response initializing replica set mongo-cluster @ ns/"
+                         + self.cluster_object.metadata.namespace + ":\n" + str(self.initiate_not_found_response),
                          str(context.exception))
 
     def test_reconfigureReplicaSet(self, mongo_client_mock):
@@ -155,9 +154,8 @@ class TestMongoService(TestCase):
         with self.assertRaises(ValueError) as context:
             self.service._reconfigureReplicaSet(self.cluster_object)
 
-        self.assertEqual("Unexpected response reconfiguring replica set mongo-cluster @ ns/mongo-operator-cluster:\n" +
-                         str(self.initiate_not_found_response),
-                         str(context.exception))
+        self.assertEqual("Unexpected response reconfiguring replica set mongo-cluster @ ns/mongo-operator-cluster:\n"
+                         + str(self.initiate_not_found_response), str(context.exception))
 
     def test_checkOrCreateReplicaSet_ok(self, mongo_client_mock):
         mongo_client_mock.return_value.admin.command.return_value = self._getFixture("replica-status-ok")
@@ -191,7 +189,7 @@ class TestMongoService(TestCase):
 
     def test_checkOrCreateReplicaSet_OperationalFailure(self, mongo_client_mock):
         bad_value = "BadValue: Unexpected field foo in replica set member configuration for member:" \
-                   "{ _id: 0, foo: \"localhost:27017\" }"
+            "{ _id: 0, foo: \"localhost:27017\" }"
         mongo_client_mock.return_value.admin.command.side_effect = (
             OperationFailure(bad_value),
             OperationFailure(bad_value))
@@ -207,7 +205,7 @@ class TestMongoService(TestCase):
 
     def test_createUsers_ValueError(self, mongo_client_mock):
         mongo_client_mock.return_value.admin.command.side_effect = OperationFailure(
-                "\"createUser\" had the wrong type. Expected string, found object"),
+            "\"createUser\" had the wrong type. Expected string, found object"),
 
         with self.assertRaises(OperationFailure) as context:
             self.service.createUsers(self.cluster_object)
@@ -249,4 +247,3 @@ class TestMongoService(TestCase):
 
         self.service._initializeReplicaSet.assert_called()
         mongo_client_mock.assert_not_called()
-

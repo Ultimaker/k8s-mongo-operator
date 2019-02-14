@@ -55,7 +55,7 @@ class BaseModel:
         :param other: The other object.
         :return: True if they are equal, False otherwise.
         """
-        return type(other) == type(self) and other.to_dict() == self.to_dict()
+        return isinstance(other, type(self)) and other.to_dict() == self.to_dict()
 
     def __getitem__(self, attr: str) -> any:
         """
@@ -74,5 +74,5 @@ class BaseModel:
         """
         return "{}({})".format(
             self.__class__.__name__,
-            ", ".join('{}={}'.format(attr, value) for attr, value in self.to_dict(skip_validation=True).items())
+            ", ".join("{}={}".format(attr, value) for attr, value in self.to_dict(skip_validation=True).items())
         )

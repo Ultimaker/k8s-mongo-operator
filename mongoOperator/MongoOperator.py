@@ -29,8 +29,9 @@ class MongoOperator:
                 try:
                     checker.checkExistingClusters()
                     checker.collectGarbage()
-                except Exception as e:
-                    logging.exception(e)
+                except Exception as global_exception:
+                    logging.exception(global_exception)
+                    raise
                 logging.info("Checks done, waiting %s seconds", self._sleep_per_run)
                 sleep(self._sleep_per_run)
         except KeyboardInterrupt:

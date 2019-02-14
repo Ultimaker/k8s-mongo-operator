@@ -39,7 +39,7 @@ class TestBackupChecker(TestCase):
         # this backup is executed every hour at 0 minutes.
         self.assertEqual("0 * * * *", self.cluster_object.spec.backups.cron)
 
-        key = ('mongo-cluster', self.cluster_object.metadata.namespace)
+        key = ("mongo-cluster", self.cluster_object.metadata.namespace)
 
         expected_calls = []
         current_date = datetime(2018, 2, 28, 12, 30, 0)
@@ -87,27 +87,27 @@ class TestBackupChecker(TestCase):
 
         self.checker.backup(self.cluster_object, current_date)
 
-        self.assertEqual([call.getSecret('storage-serviceaccount', 'mongo-operator-cluster')],
+        self.assertEqual([call.getSecret("storage-serviceaccount", "mongo-operator-cluster")],
                          self.kubernetes_service.mock_calls)
 
         subprocess_mock.assert_called_once_with([
-            'mongodump', '--host', 'mongo-cluster-2.mongo-cluster.mongo-operator-cluster.svc.cluster.local', '--gzip',
-            '--archive=/tmp/' + expected_backup_name
+            "mongodump", "--host", "mongo-cluster-2.mongo-cluster.mongo-operator-cluster.svc.cluster.local", "--gzip",
+            "--archive=/tmp/" + expected_backup_name
         ])
 
-        expected_service_call = call.from_service_account_info({'user': 'password'})
+        expected_service_call = call.from_service_account_info({"user": "password"})
         self.assertEqual([expected_service_call], gcs_service_mock.mock_calls)
 
         expected_storage_calls = [
             call(gcs_service_mock.from_service_account_info.return_value.project_id,
                  gcs_service_mock.from_service_account_info.return_value),
-            call().bucket('ultimaker-mongo-backups'),
-            call().bucket().blob('test-backups/' + expected_backup_name),
-            call().bucket().blob().upload_from_filename('/tmp/' + expected_backup_name),
+            call().bucket("ultimaker-mongo-backups"),
+            call().bucket().blob("test-backups/" + expected_backup_name),
+            call().bucket().blob().upload_from_filename("/tmp/" + expected_backup_name),
         ]
         self.assertEqual(expected_storage_calls, storage_mock.mock_calls)
 
-        expected_os_call = call.remove('/tmp/' + expected_backup_name)
+        expected_os_call = call.remove("/tmp/" + expected_backup_name)
         self.assertEqual([expected_os_call], os_mock.mock_calls)
 
     @patch("mongoOperator.helpers.BackupHelper.check_output")

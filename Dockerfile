@@ -27,7 +27,7 @@ RUN ENV_NAME=testing ASYNC_TEST_TIMEOUT=15 coverage run --source="mongoOperator"
 
 # Linting
 RUN flake8 . --count
-RUN pylint stardustAuthServerApi --rcfile=lib/stardustCommons/.pylintrc
+RUN pylint mongoOperator
 
 # This is the container build statements that will create the container meant for deployment
 FROM base AS build
