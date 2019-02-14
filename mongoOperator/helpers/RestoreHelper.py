@@ -5,7 +5,7 @@ import json
 import logging
 import os
 from base64 import b64decode
-from subprocess import check_output, CalledProcessError, SubprocessError
+from subprocess import check_output, CalledProcessError
 
 from time import sleep
 from google.cloud.storage import Client as StorageClient
@@ -130,7 +130,7 @@ class RestoreHelper:
                 logging.error("Could not restore '%s', attempt %d. Return code: %s stderr: '%s' stdout: '%s'",
                               backup_file, _, err.returncode, err.stderr, err.stdout)
                 sleep(self.RESTORE_WAIT)
-        raise SubprocessError("Could not restore '{}' after {} retries!".format(backup_file, self.RESTORE_RETRIES))
+        raise TimeoutError("Could not restore '{}' after {} retries!".format(backup_file, self.RESTORE_RETRIES))
 
     def _downloadBackup(self, cluster_object: V1MongoClusterConfiguration, backup_file: str) -> str:
         """

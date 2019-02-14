@@ -32,7 +32,6 @@ class TestMongoOperator(TestCase):
     @patch("mongoOperator.MongoOperator.ClusterChecker")
     def test_run_with_interrupt(self, checker_mock, sleep_mock):
         sleep_mock.side_effect = None, KeyboardInterrupt  # we force stop on the 2nd run
-        checker_mock.return_value.collectGarbage.side_effect = None, None
 
         operator = MongoOperator(sleep_per_run=0.01)
         operator.run_forever()
@@ -43,4 +42,4 @@ class TestMongoOperator(TestCase):
             call().checkExistingClusters(), call().collectGarbage(),
         ]
         self.assertEqual(expected_calls, checker_mock.mock_calls)
-        self.assertEqual([call(0.01)], sleep_mock.mock_calls)
+        self.assertEqual([call(0.01), call(0.01)], sleep_mock.mock_calls)

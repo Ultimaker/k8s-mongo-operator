@@ -110,7 +110,7 @@ class TestRestoreHelper(TestCase):
         subprocess_mock.side_effect = CalledProcessError(3, "cmd", "output", "error")
         expected_backup_name = "mongodb-backup-mongo-cluster-mongo-cluster-2018-02-28_140000.archive.gz"
 
-        with self.assertRaises(SubprocessError) as context:
+        with self.assertRaises(TimeoutError) as context:
             self.restore_helper.restore(self.cluster_object, expected_backup_name)
 
         self.assertEqual("Could not restore '" + expected_backup_name + "' after 4 retries!", str(context.exception))
