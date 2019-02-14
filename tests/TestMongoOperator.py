@@ -43,4 +43,4 @@ class TestMongoOperator(TestCase):
             call().checkExistingClusters(), call().collectGarbage(),
         ]
         self.assertEqual(expected_calls, checker_mock.mock_calls)
-        self.assertEqual([call(0.01), call(0.01)], sleep_mock.mock_calls)
+        self.assertEqual([call(0.01)], sleep_mock.mock_calls)
