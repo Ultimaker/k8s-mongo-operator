@@ -1,11 +1,13 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
+from typing import cast
 from unittest import TestCase
 from unittest.mock import MagicMock
 
-from mongoOperator.helpers.StatefulSetChecker import StatefulSetChecker
+from mongoOperator.helpers.resourceCheckers.StatefulSetChecker import StatefulSetChecker
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
+from mongoOperator.services.KubernetesService import KubernetesService
 from tests.test_utils import getExampleClusterDefinition
 
 
@@ -14,7 +16,7 @@ class TestStatefulSetChecker(TestCase):
     def setUp(self):
         super().setUp()
         self.kubernetes_service = MagicMock()
-        self.checker = StatefulSetChecker(self.kubernetes_service)
+        self.checker = StatefulSetChecker(cast(KubernetesService, self.kubernetes_service))
         self.cluster_object = V1MongoClusterConfiguration(**getExampleClusterDefinition())
 
     def test_listResources(self):
@@ -39,8 +41,7 @@ class TestStatefulSetChecker(TestCase):
         self.kubernetes_service.updateStatefulSet.assert_called_once_with(self.cluster_object)
 
     def test_deleteResource(self):
-        result = self.checker.deleteResource(self.cluster_object.metadata.name,
-                                             self.cluster_object.metadata.namespace)
+        result = self.checker.deleteResource(self.cluster_object.metadata.name, self.cluster_object.metadata.namespace)
         self.assertEqual(self.kubernetes_service.deleteStatefulSet.return_value, result)
         self.kubernetes_service.deleteStatefulSet.assert_called_once_with(
             self.cluster_object.metadata.name, self.cluster_object.metadata.namespace

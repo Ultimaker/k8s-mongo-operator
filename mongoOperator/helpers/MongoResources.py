@@ -1,11 +1,6 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-import json
-import logging
-from json import JSONDecodeError
-
-import re
 from base64 import b64decode
 from typing import List, Dict, Tuple, Any, Union
 
@@ -15,9 +10,7 @@ from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfi
 
 
 class MongoResources:
-    """
-    Helper class responsible for creating the Mongo commands.
-    """
+    """ Helper class responsible for creating the Mongo commands. """
 
     @classmethod
     def getMemberHostname(cls, pod_index, cluster_name, namespace) -> str:
@@ -29,6 +22,18 @@ class MongoResources:
         :return: The name of the host.
         """
         return "{}-{}.{}.{}.svc.cluster.local".format(cluster_name, pod_index, cluster_name, namespace)
+
+    @classmethod
+    def getMemberHostnames(cls, cluster_object: V1MongoClusterConfiguration) -> List[str]:
+        """
+        Creates a list with the replica set members for mongo.
+        :param cluster_object: The cluster object from the YAML file.
+        :return: A list with the member hostnames.
+        """
+        name = cluster_object.metadata.name
+        namespace = cluster_object.metadata.namespace
+        replicas = cluster_object.spec.mongodb.replicas
+        return [cls.getMemberHostname(i, name, namespace) for i in range(replicas)]
 
     @classmethod
     def createReplicaInitiateCommand(cls, cluster_object) -> Tuple[str, dict]:
@@ -91,15 +96,3 @@ class MongoResources:
             "version": 1,
             "members": [{"_id": i, "host": cls.getMemberHostname(i, name, namespace)} for i in range(replicas)],
         }
-
-    @classmethod
-    def getConnectionSeeds(cls, cluster_object: V1MongoClusterConfiguration) -> List[str]:
-        """
-        Creates a list with the replica set members for mongo.
-        :param cluster_object: The cluster object from the YAML file.
-        :return: A list with the member hostnames.
-        """
-        name = cluster_object.metadata.name
-        namespace = cluster_object.metadata.namespace
-        replicas = cluster_object.spec.mongodb.replicas
-        return [cls.getMemberHostname(i, name, namespace) for i in range(replicas)]

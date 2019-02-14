@@ -1,1 +1,24 @@
-{"ok": 1.0, "operationTime": {"$timestamp": {"t": 1549962075, "i": 4}}, "$clusterTime": {"clusterTime": {"$timestamp": {"t": 1549962075, "i": 4}}, "signature": {"hash": {"$binary": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=", "$type": "00"}, "keyId": 0}}}
+{
+  "ok": 1.0,
+  "operationTime": {
+    "$timestamp": {
+      "t": 1549962075,
+      "i": 4
+    }
+  },
+  "$clusterTime": {
+    "clusterTime": {
+      "$timestamp": {
+        "t": 1549962075,
+        "i": 4
+      }
+    },
+    "signature": {
+      "hash": {
+        "$binary": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "$type": "00"
+      },
+      "keyId": 0
+    }
+  }
+}

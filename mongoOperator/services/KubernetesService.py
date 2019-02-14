@@ -140,7 +140,6 @@ class KubernetesService:
         :param labels: Optional labels for this secret, defaults to the default labels (see `cls.createDefaultLabels`).
         :return: The secret if successful, None otherwise.
         """
-        # Create the secret object.
         secret_body = KubernetesResources.createSecret(secret_name, namespace, secret_data, labels)
         logging.info("Creating secret %s in namespace %s", secret_name, namespace)
         with IgnoreIfExists():

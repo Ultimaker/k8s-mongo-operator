@@ -18,7 +18,7 @@ from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfi
 from mongoOperator.services.KubernetesService import KubernetesService
 
 
-class BackupChecker:
+class BackupHelper:
     """
     Class responsible for handling the Backups for the Mongo cluster.
     """
