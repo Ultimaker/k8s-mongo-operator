@@ -91,18 +91,18 @@ class RestoreHelper:
         :param cluster_object: The cluster object from the YAML file.
         :return: Whether a restore was executed or not.
         """
-        if cluster_object.spec.backups.gcs.restore_from is not None:
-            backup_file = cluster_object.spec.backups.gcs.restore_from
-            if backup_file == "latest":
-                backup_file = self.getLastBackupStorageObjectName(cluster_object)
+        if cluster_object.spec.backups.gcs.restore_from is None:
+            return False
 
-            logging.info("Attempting to restore file %s to cluster %s @ ns/%s.", backup_file,
-                         cluster_object.metadata.name, cluster_object.metadata.namespace)
+        backup_file = cluster_object.spec.backups.gcs.restore_from
+        if backup_file == "latest":
+            backup_file = self.getLastBackupStorageObjectName(cluster_object)
 
-            self.restore(cluster_object, backup_file)
-            return True
+        logging.info("Attempting to restore file %s to cluster %s @ ns/%s.", backup_file,
+                     cluster_object.metadata.name, cluster_object.metadata.namespace)
 
-        return False
+        self.restore(cluster_object, backup_file)
+        return True
 
     def restore(self, cluster_object: V1MongoClusterConfiguration, backup_file: str) -> bool:
         """
@@ -119,8 +119,8 @@ class RestoreHelper:
         # Download the backup file from the bucket
         downloaded_file = self._downloadBackup(cluster_object, backup_file)
 
+        # Wait for the replica set to become ready
         for _ in range(self.RESTORE_RETRIES):
-            # Wait for the replica set to become ready
             try:
                 logging.info("Running mongorestore --host %s --gzip --archive=%s", ",".join(hostnames), downloaded_file)
                 restore_output = check_output(["mongorestore", "--host", ",".join(hostnames), "--gzip",
