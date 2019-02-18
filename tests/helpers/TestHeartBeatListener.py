@@ -6,7 +6,6 @@ from unittest import TestCase
 from unittest.mock import Mock, MagicMock
 
 from pymongo.monitoring import ServerHeartbeatStartedEvent, ServerHeartbeatSucceededEvent, ServerHeartbeatFailedEvent
-from pymongo.ismaster import IsMaster
 from mongoOperator.helpers.listeners.mongo.HeartbeatListener import HeartbeatListener
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from tests.test_utils import getExampleClusterDefinition
@@ -29,12 +28,20 @@ class TestHeartbeatLogger(TestCase):
         heartbeat_logger = HeartbeatListener(self.cluster_object,
                                              all_hosts_ready_callback=self._onAllHostsReadyCallback)
 
-        # Fake two already successful hosts
-        heartbeat_logger.succeeded(event=cast(ServerHeartbeatSucceededEvent, MagicMock()))
-        heartbeat_logger.succeeded(event=cast(ServerHeartbeatSucceededEvent, MagicMock()))
-
         heartbeat_event_mock = MagicMock(spec=ServerHeartbeatSucceededEvent)
         heartbeat_event_mock.reply.document = {"info": ""}
+        heartbeat_event_mock.connection_id = "host-1", "27017"
+
+        heartbeat_logger.succeeded(event=cast(ServerHeartbeatSucceededEvent, heartbeat_event_mock))
+        heartbeat_event_mock.connection_id = "host-2", "27017"
+        heartbeat_logger.succeeded(event=cast(ServerHeartbeatSucceededEvent, heartbeat_event_mock))
+
+        heartbeat_event_mock.connection_id = "host-3", "27017"
+        heartbeat_logger.succeeded(event=cast(ServerHeartbeatSucceededEvent, heartbeat_event_mock))
+
+        heartbeat_event_mock.reply.document = {"info": ""}
+        heartbeat_event_mock.connection_id = "host-1", "27017"
+
         heartbeat_logger.succeeded(event=cast(ServerHeartbeatSucceededEvent, heartbeat_event_mock))
 
         self._onAllHostsReadyCallback.assert_called_once_with(self.cluster_object)

@@ -52,13 +52,10 @@ class HeartbeatListener(ServerHeartbeatListener):
                           host_count_found, self._expected_host_count)
             return
 
-        if "info" in event.reply.document and event.reply.document["info"] == self.INVALID_REPLICA_SET_CONFIG:
-            # The reply indicated that the replica set config was not correct.
-            logging.debug("The replica set config was not correct: %s", event.reply)
-            return
-
-        self._all_hosts_ready_callback(self._cluster_object)
-        self._callback_executed = True
+        # Only execute the callback on the first host
+        if list(self._hosts.keys())[0] == event.connection_id:
+            self._all_hosts_ready_callback(self._cluster_object)
+            self._callback_executed = True
 
     def failed(self, event: ServerHeartbeatFailedEvent) -> None:
         """

@@ -143,8 +143,8 @@ class MongoService:
         """
         return MongoClient(
             MongoResources.getMemberHostnames(cluster_object),
-            connectTimeoutMS = 60000,
-            serverSelectionTimeoutMS = 60000,
+            connectTimeoutMS = 120000,
+            serverSelectionTimeoutMS = 120000,
             replicaSet = cluster_object.metadata.name,
             event_listeners = [
                 CommandLogger(),
@@ -176,7 +176,7 @@ class MongoService:
     def _executeAdminCommand(self, cluster_object: V1MongoClusterConfiguration, mongo_command: str, *args, **kwargs
                              ) -> Optional[Dict[str, any]]:
         """
-        Executes the given mongo command inside the pod with the given name.
+        Executes the given mongo command on the MongoDB cluster.
         Retries a few times in case we receive a handshake failure.
         :param name: The name of the cluster.
         :param namespace: The namespace of the cluster.
