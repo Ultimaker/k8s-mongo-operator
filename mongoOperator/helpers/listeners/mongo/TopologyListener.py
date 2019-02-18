@@ -15,6 +15,8 @@ class TopologyListener(MongoTopologyListener):
 
     def __init__(self, cluster_object: V1MongoClusterConfiguration,
                  replica_set_ready_callback: Callable[[V1MongoClusterConfiguration], None]) -> None:
+        super().__init__()
+
         self._cluster_object: V1MongoClusterConfiguration = cluster_object
         self._replica_set_ready_callback: Callable[[V1MongoClusterConfiguration], None] = replica_set_ready_callback
 

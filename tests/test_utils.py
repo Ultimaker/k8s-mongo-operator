@@ -10,7 +10,7 @@ def getExampleClusterDefinition(replicas = 3) -> dict:
 
 
 def getExampleClusterDefinitionWithRestore() -> dict:
-    with open("./examples/mongo-3-replicas-from-backup.yaml") as f:
+    with open("./examples/mongo-3-replicas-from-latest-backup.yaml") as f:
         return yaml.load(f)
 
 

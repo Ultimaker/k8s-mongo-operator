@@ -15,6 +15,8 @@ from mongoOperator.helpers.MongoResources import MongoResources
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 
+from typing import Dict
+
 
 class RestoreHelper:
     """
@@ -25,13 +27,13 @@ class RestoreHelper:
     RESTORE_RETRIES = 4
     RESTORE_WAIT = 15.0
 
-    def __init__(self, kubernetes_service: KubernetesService):
+    def __init__(self, kubernetes_service: KubernetesService) -> None:
         """
         :param kubernetes_service: The kubernetes service.
         """
         self.kubernetes_service = kubernetes_service
 
-    def _getCredentials(self, cluster_object: V1MongoClusterConfiguration) -> dict:
+    def _getCredentials(self, cluster_object: V1MongoClusterConfiguration) -> Dict[str, any]:
         """
         Retrieves the storage credentials for the given cluster object from the Kubernetes secret as specified in the
         cluster object.
@@ -44,7 +46,7 @@ class RestoreHelper:
         credentials_json = b64decode(credentials_encoded)
         return json.loads(credentials_json)
 
-    def getLastBackup(self, cluster_object: V1MongoClusterConfiguration) -> str:
+    def getLastBackupStorageObjectName(self, cluster_object: V1MongoClusterConfiguration) -> str:
         """
         Returns the filename of the last backup file in the bucket.
         :param cluster_object: The cluster object from the YAML file.
@@ -92,7 +94,7 @@ class RestoreHelper:
         if cluster_object.spec.backups.gcs.restore_from is not None:
             backup_file = cluster_object.spec.backups.gcs.restore_from
             if backup_file == "latest":
-                backup_file = self.getLastBackup(cluster_object)
+                backup_file = self.getLastBackupStorageObjectName(cluster_object)
 
             logging.info("Attempting to restore file %s to cluster %s @ ns/%s.", backup_file,
                          cluster_object.metadata.name, cluster_object.metadata.namespace)
@@ -124,7 +126,12 @@ class RestoreHelper:
                 restore_output = check_output(["mongorestore", "--host", ",".join(hostnames), "--gzip",
                                                "--archive=" + downloaded_file])
                 logging.info("Restore output: %s", restore_output)
-                os.remove(downloaded_file)
+
+                try:
+                    os.remove(downloaded_file)
+                except OSError as err:
+                    logging.error("Unable to remove '%s': %s", downloaded_file, err.strerror)
+
                 return True
             except CalledProcessError as err:
                 logging.error("Could not restore '%s', attempt %d. Return code: %s stderr: '%s' stdout: '%s'",

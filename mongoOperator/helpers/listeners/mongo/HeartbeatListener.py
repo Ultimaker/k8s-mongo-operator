@@ -17,6 +17,7 @@ class HeartbeatListener(ServerHeartbeatListener):
 
     def __init__(self, cluster_object: V1MongoClusterConfiguration,
                  all_hosts_ready_callback: Callable[[V1MongoClusterConfiguration], None]) -> None:
+        super().__init__()
         self._cluster_object: V1MongoClusterConfiguration = cluster_object
         self._expected_host_count: int = cluster_object.spec.mongodb.replicas
         self._hosts: Dict[str, int] = {}

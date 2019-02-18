@@ -117,6 +117,20 @@ class TestRestoreHelper(TestCase):
         self.assertEqual(4, subprocess_mock.call_count)
         # TODO: assert calls on unused mocks
 
+    @patch("mongoOperator.helpers.RestoreHelper.os")
+    @patch("mongoOperator.helpers.RestoreHelper.StorageClient")
+    @patch("mongoOperator.helpers.RestoreHelper.ServiceCredentials")
+    @patch("mongoOperator.helpers.RestoreHelper.check_output")
+    def test_restore_os_error(self, subprocess_mock, gcs_service_mock, storage_mock, os_mock):
+        expected_backup_name = "mongodb-backup-mongo-cluster-mongo-cluster-2018-02-28_140000.archive.gz"
+        os_mock.remove.side_effect = OSError()
+
+        self.restore_helper.restore(self.cluster_object, expected_backup_name)
+
+        os_mock.remove.assert_called_with("/tmp/" + expected_backup_name)
+        self.assertEqual(1, subprocess_mock.call_count)
+        # TODO: assert calls on unused mocks
+
     @patch("mongoOperator.helpers.RestoreHelper.check_output")
     def test_restore_gcs_bad_credentials(self, subprocess_mock):
         expected_backup_name = "mongodb-backup-mongo-cluster-mongo-cluster-2018-02-28_140000.archive.gz"
