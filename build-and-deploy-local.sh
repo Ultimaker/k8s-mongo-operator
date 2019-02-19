@@ -30,6 +30,7 @@ ${KUBECTL} apply --filename=kubernetes/operators/mongo-operator/deployment.yaml 
 ${KUBECTL} describe deploy mongo-operator
 
 # create a secret with the google account credentials
+${KUBECTL} delete secret storage-serviceaccount || true
 ${KUBECTL} create secret generic storage-serviceaccount --from-file=json=google_credentials.json || true
 
 # wait for the pod to startup to retrieve its name
