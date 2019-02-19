@@ -181,7 +181,7 @@ class MongoService:
         Callback triggered when all hosts in the would-be replica set are available.
         :param cluster_object: The cluster configuration object for the hosts in the would-be replica set.
         """
-        self._initializeReplicaSet(cluster_object)
+        self.checkOrCreateReplicaSet(cluster_object)
 
     def _executeAdminCommand(self, cluster_object: V1MongoClusterConfiguration, mongo_command: str, *args, **kwargs
                              ) -> Optional[Dict[str, any]]:

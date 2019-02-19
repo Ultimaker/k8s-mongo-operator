@@ -25,18 +25,20 @@ if ! kubectl get namespace ${NAMESPACE}; then
 fi
 
 # remove the deployment, if needed, and apply the new one
-${KUBECTL} delete deployment mongo-operator 2>/dev/null || true
-${KUBECTL} apply --filename=kubernetes/operators/mongo-operator/service-account.yaml || true
-${KUBECTL} apply --filename=kubernetes/operators/mongo-operator/cluster-role.yaml || true
-${KUBECTL} apply --filename=kubernetes/operators/mongo-operator/cluster-role-binding.yaml || true
-${KUBECTL} apply --filename=kubernetes/operators/mongo-operator/deployment.yaml || true
+${KUBECTL} delete deployment mongo-operator 2>/dev/null
+${KUBECTL} apply --filename=kubernetes/operators/mongo-operator/service-account.yaml
+${KUBECTL} apply --filename=kubernetes/operators/mongo-operator/cluster-role.yaml
+${KUBECTL} apply --filename=kubernetes/operators/mongo-operator/cluster-role-binding.yaml
+${KUBECTL} apply --filename=kubernetes/operators/mongo-operator/deployment.yaml
 
 # show some details about the deployment
 ${KUBECTL} describe deploy mongo-operator
 
 # create a secret with the google account credentials
-${KUBECTL} delete secret storage-serviceaccount || true
-${KUBECTL} create secret generic storage-serviceaccount --from-file=json=google_credentials.json || true
+if ${KUBECTL} get secret storage-serviceaccount 1>/dev/null; then
+    ${KUBECTL} delete secret storage-serviceaccount
+fi
+${KUBECTL} create secret generic storage-serviceaccount --from-file=json=google_credentials.json
 
 # wait for the pod to startup to retrieve its name
 sleep 10

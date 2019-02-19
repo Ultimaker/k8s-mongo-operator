@@ -242,9 +242,9 @@ class TestMongoService(TestCase):
         mongo_client_mock.assert_not_called()
 
     def test_onAllHostsReady(self, mongo_client_mock):
-        self.service._initializeReplicaSet = MagicMock()
+        self.service.checkOrCreateReplicaSet = MagicMock()
 
         self.service._onAllHostsReady(self.cluster_object)
 
-        self.service._initializeReplicaSet.assert_called()
+        self.service.checkOrCreateReplicaSet.assert_called()
         mongo_client_mock.assert_not_called()
