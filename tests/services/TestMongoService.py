@@ -200,10 +200,12 @@ class TestMongoService(TestCase):
         self.assertEqual(str(context.exception), bad_value)
 
     def test_createUsers_ok(self, mongo_client_mock):
+        mongo_client_mock.return_value.system.users.find_one.return_value = None
         mongo_client_mock.return_value.admin.command.return_value = self._getFixture("createUser-ok")
         self.service.createUsers(self.cluster_object)
 
     def test_createUsers_ValueError(self, mongo_client_mock):
+        mongo_client_mock.return_value.system.users.find_one.return_value = None
         mongo_client_mock.return_value.admin.command.side_effect = OperationFailure(
             "\"createUser\" had the wrong type. Expected string, found object"),
 
@@ -213,6 +215,7 @@ class TestMongoService(TestCase):
         self.assertEqual("\"createUser\" had the wrong type. Expected string, found object", str(context.exception))
 
     def test_createUsers_TimeoutError(self, mongo_client_mock):
+        mongo_client_mock.return_value.system.users.find_one.return_value = None
         mongo_client_mock.return_value.admin.command.side_effect = (
             ConnectionFailure("connection attempt failed"), ConnectionFailure("connection attempt failed"),
             ConnectionFailure("connection attempt failed"), ConnectionFailure("connection attempt failed")

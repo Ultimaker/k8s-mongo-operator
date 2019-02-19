@@ -87,9 +87,20 @@ class MongoService:
         admin_credentials = self._kubernetes_service.getSecret(secret_name, namespace)
         create_admin_command, create_admin_args, create_admin_kwargs = MongoResources.createCreateAdminCommand(
             admin_credentials)
-        create_admin_response = self._executeAdminCommand(cluster_object, create_admin_command, create_admin_args,
-                                                          **create_admin_kwargs)
-        logging.info("Created admin user: %s", create_admin_response)
+
+        if not self.userExists(cluster_object, create_admin_args):
+            create_admin_response = self._executeAdminCommand(cluster_object, create_admin_command, create_admin_args,
+                                                              **create_admin_kwargs)
+            logging.info("Created admin user: %s", create_admin_response)
+        else:
+            logging.info("No need to create admin user, it already exists")
+
+    def userExists(self, cluster_object: V1MongoClusterConfiguration, username: str) -> bool:
+        name = cluster_object.metadata.name
+        if name not in self._connected_replica_sets:
+            self._connected_replica_sets[name] = self._createMongoClientForReplicaSet(cluster_object)
+
+        return self._connected_replica_sets[name].system.users.find_one({"user": username}) is not None
 
     def _reconfigureReplicaSet(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """
