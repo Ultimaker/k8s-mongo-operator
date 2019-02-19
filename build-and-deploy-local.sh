@@ -25,7 +25,7 @@ if ! kubectl get namespace ${NAMESPACE}; then
 fi
 
 # remove the deployment, if needed, and apply the new one
-${KUBECTL} delete deployment mongo-operator 2>/dev/null
+${KUBECTL} delete deployment mongo-operator 1>/dev/null
 ${KUBECTL} apply --filename=kubernetes/operators/mongo-operator/service-account.yaml
 ${KUBECTL} apply --filename=kubernetes/operators/mongo-operator/cluster-role.yaml
 ${KUBECTL} apply --filename=kubernetes/operators/mongo-operator/cluster-role-binding.yaml
@@ -42,7 +42,7 @@ ${KUBECTL} create secret generic storage-serviceaccount --from-file=json=google_
 
 # wait for the pod to startup to retrieve its name
 sleep 10
-POD_NAME=$(${KUBECTL} get pods | grep -e "mongo-operator.*Running" | cut --fields=1 --delimiter=" ")
+POD_NAME=$(${KUBECTL} get pod -l app=mongo-operator -o jsonpath="{.items[0].metadata.name}")
 if [ -z $POD_NAME ]; then
     echo "The operator pod is not running!"
     ${KUBECTL} get pods

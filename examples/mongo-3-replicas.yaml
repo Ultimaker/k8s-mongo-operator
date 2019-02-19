@@ -3,6 +3,8 @@ kind: Mongo
 metadata:
   name: mongo-cluster
   namespace: mongo-operator-cluster
+  labels:
+    app: mongo-cluster
 spec:
   mongodb:
     replicas: 3  # Must be between 3 and 50

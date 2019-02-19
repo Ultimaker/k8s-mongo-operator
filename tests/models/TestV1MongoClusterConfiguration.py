@@ -62,7 +62,8 @@ class TestV1MongoClusterConfiguration(TestCase):
     def test_example_repr(self):
         expected = \
             "V1MongoClusterConfiguration(api_version=operators.ultimaker.com/v1, kind=Mongo, " \
-            "metadata={'name': 'mongo-cluster', 'namespace': '" + self.cluster_object.metadata.namespace + "'}, " \
+            "metadata={'labels': {'app': 'mongo-cluster'}, 'name': 'mongo-cluster', 'namespace': '" \
+            + self.cluster_object.metadata.namespace + "'}, " \
             "spec={'backups': {'cron': '0 * * * *', 'gcs': {'bucket': 'ultimaker-mongo-backups', " \
             "'prefix': 'test-backups', 'service_account': {'secret_key_ref': {'key': 'json', " \
             "'name': 'storage-serviceaccount'}}}}, 'mongodb': {'cpu_limit': '100m', 'memory_limit': '64Mi', " \
