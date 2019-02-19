@@ -26,6 +26,7 @@ class AdminSecretChecker(BaseResourceChecker):
 
     @classmethod
     def getSecretName(cls, cluster_name: str) -> str:
+        """ Returns the correctly formatted name of the secret for this cluster."""
         return cls.NAME_FORMAT.format(cluster_name)
 
     @staticmethod

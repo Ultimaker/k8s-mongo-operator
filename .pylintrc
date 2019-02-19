@@ -35,7 +35,7 @@ max-nested-blocks=3
 
 [MESSAGES CONTROL]
 # C0326: No space allowed around keyword argument assignment
-# C0111: Missing module docstring (missing-docstring)
+# C0111: Missing module docstring (because we use a file per class, this would lead to duplicate docstrings)
 # C0411: Ignore import order because the rules are different than in PyCharm, so automatic imports break lots of builds
 # R0201: Method could be a function (no-self-use)
 # R0401: Cyclic imports (cyclic-import) are used for typing

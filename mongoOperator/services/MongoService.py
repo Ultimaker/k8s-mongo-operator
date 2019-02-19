@@ -96,6 +96,12 @@ class MongoService:
             logging.info("No need to create admin user, it already exists")
 
     def userExists(self, cluster_object: V1MongoClusterConfiguration, username: str) -> bool:
+        """
+        Runs a Mongo command to determine whether the specified user exists in this cluster.
+        :param cluster_object: The cluster object from the YAML file.
+        :param username: The user we want to lookup.
+        :return: A boolean value indicating whether the user exists.
+        """
         find_admin_command, find_admin_kwargs = MongoResources.createFindAdminCommand(username)
         find_result = self._executeAdminCommand(cluster_object, find_admin_command, find_admin_kwargs)
         logging.debug("Result of user find_one is %s", repr(find_result))
