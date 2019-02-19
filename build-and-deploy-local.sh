@@ -3,6 +3,11 @@ set -eo pipefail
 
 EXAMPLE_FILE=${1:-examples/mongo-3-replicas.yaml}
 
+if ! [ -e "google_credentials.json" ]; then
+    echo "google_credentials.json file is missing, aborting."
+    exit -1
+fi
+
 # set the environment of the minikube docker
 eval $(minikube docker-env)
 

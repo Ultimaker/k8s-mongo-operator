@@ -75,6 +75,20 @@ class MongoResources:
         return "createUser", admin_username, kwargs
 
     @classmethod
+    def createFindAdminCommand(cls, admin_username: str) \
+            -> Tuple[str, Dict[str, Union[List[Dict[str, str]], Any]]]:
+        """
+        Creates a MongoDB command that creates administrator users.
+        :param admin_username: The admin username we're looking for.
+        :return: The command to be sent to MongoDB.
+        """
+        kwargs = {
+            "user": admin_username,
+            "db": "admin"
+        }
+        return "usersInfo", kwargs
+
+    @classmethod
     def createStatusCommand(cls) -> str:
         """
         Returns the string that is used to retrieve the status from the MongoDB replica set.

@@ -96,11 +96,10 @@ class MongoService:
             logging.info("No need to create admin user, it already exists")
 
     def userExists(self, cluster_object: V1MongoClusterConfiguration, username: str) -> bool:
-        name = cluster_object.metadata.name
-        if name not in self._connected_replica_sets:
-            self._connected_replica_sets[name] = self._createMongoClientForReplicaSet(cluster_object)
-
-        return self._connected_replica_sets[name].system.users.find_one({"user": username}) is not None
+        find_admin_command, find_admin_kwargs = MongoResources.createFindAdminCommand(username)
+        find_result = self._executeAdminCommand(cluster_object, find_admin_command, find_admin_kwargs)
+        logging.debug("Result of user find_one is %s", repr(find_result))
+        return find_result is not None
 
     def _reconfigureReplicaSet(self, cluster_object: V1MongoClusterConfiguration) -> None:
         """
