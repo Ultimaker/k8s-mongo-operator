@@ -37,7 +37,6 @@ class TopologyListener(MongoTopologyListener):
         previous_topology_type = event.previous_description.topology_type
         new_topology_type = event.new_description.topology_type
         if new_topology_type != previous_topology_type:
-            # topology_type_name was added in PyMongo 3.4
             logging.debug("Topology %s changed type from %s to %s", event.topology_id,
                           event.previous_description.topology_type_name,
                           event.new_description.topology_type_name)

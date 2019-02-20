@@ -24,7 +24,6 @@ class ServerLogger(ServerListener):
         previous_server_type = event.previous_description.server_type
         new_server_type = event.new_description.server_type
         if new_server_type != previous_server_type:
-            # server_type_name was added in PyMongo 3.4
             logging.debug("Server %s changed type from %s to %s", event.server_address,
                           event.previous_description.server_type_name, event.new_description.server_type_name)
 

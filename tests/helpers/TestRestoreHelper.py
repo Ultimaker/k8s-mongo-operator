@@ -65,8 +65,7 @@ class TestRestoreHelper(TestCase):
         self.cluster_object = V1MongoClusterConfiguration(**self.cluster_dict)
 
         self.restore_helper.restoreIfNeeded(self.cluster_object)
-        print(restore_mock.mock_calls)
-        assert not restore_mock.called, "restore_mock should not have been called"
+        self.assertFalse(restore_mock.called, "restore_mock should not have been called")
 
     @patch("mongoOperator.helpers.RestoreHelper.os")
     @patch("mongoOperator.helpers.RestoreHelper.StorageClient")

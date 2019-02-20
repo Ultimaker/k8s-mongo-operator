@@ -24,6 +24,7 @@ class RestoreHelper:
     """
     DEFAULT_BACKUP_PREFIX = "backups"
     BACKUP_FILE_FORMAT = "mongodb-backup-{namespace}-{name}-{date}.archive.gz"
+    LATEST_BACKUP_KEY = "latest"
     RESTORE_RETRIES = 4
     RESTORE_WAIT = 15.0
 
@@ -95,7 +96,7 @@ class RestoreHelper:
             return False
 
         backup_file = cluster_object.spec.backups.gcs.restore_from
-        if backup_file == "latest":
+        if backup_file == self.LATEST_BACKUP_KEY:
             backup_file = self.getLastBackupStorageObjectName(cluster_object)
 
         logging.info("Attempting to restore file %s to cluster %s @ ns/%s.", backup_file,

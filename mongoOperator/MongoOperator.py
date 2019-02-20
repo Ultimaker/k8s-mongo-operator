@@ -4,7 +4,7 @@
 import logging
 from time import sleep
 
-from mongoOperator.ClusterManager import ClusterChecker
+from mongoOperator.ClusterManager import ClusterManager
 
 
 class MongoOperator:
@@ -22,7 +22,7 @@ class MongoOperator:
         """
         Runs the mongo operator forever (until a kill command is received).
         """
-        checker = ClusterChecker()
+        checker = ClusterManager()
         try:
             while True:
                 logging.info("**** Running Cluster Check ****")

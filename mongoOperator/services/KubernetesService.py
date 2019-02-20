@@ -102,7 +102,7 @@ class KubernetesService:
                                                                     Settings.CUSTOM_OBJECT_RESOURCE_PLURAL,
                                                                     name)
 
-    def listAllServicesWithLabels(self, labels: Dict[str, str] = None) -> V1ServiceList:
+    def listAllServicesWithLabels(self, labels: Optional[Dict[str, str]] = None) -> V1ServiceList:
         """Get all services with the given labels."""
         label_selector = KubernetesResources.createLabelSelector(labels or self.DEFAULT_LABELS)
         logging.debug("Getting all services with labels %s", label_selector)

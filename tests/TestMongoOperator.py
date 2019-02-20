@@ -12,7 +12,7 @@ class TestMongoOperator(TestCase):
     maxDiff = None
 
     @patch("mongoOperator.MongoOperator.sleep")
-    @patch("mongoOperator.MongoOperator.ClusterChecker")
+    @patch("mongoOperator.MongoOperator.ClusterManager")
     def test_run(self, checker_mock, sleep_mock):
         checker_mock.return_value.collectGarbage.side_effect = None, Exception()  # break the 3rd run
 
@@ -29,7 +29,7 @@ class TestMongoOperator(TestCase):
         self.assertEqual([call(0.01)], sleep_mock.mock_calls)
 
     @patch("mongoOperator.MongoOperator.sleep")
-    @patch("mongoOperator.MongoOperator.ClusterChecker")
+    @patch("mongoOperator.MongoOperator.ClusterManager")
     def test_run_with_interrupt(self, checker_mock, sleep_mock):
         sleep_mock.side_effect = None, KeyboardInterrupt  # we force stop on the 2nd run
 

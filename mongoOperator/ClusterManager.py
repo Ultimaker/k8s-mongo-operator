@@ -14,10 +14,8 @@ from mongoOperator.services.KubernetesService import KubernetesService
 from mongoOperator.services.MongoService import MongoService
 
 
-class ClusterChecker:
+class ClusterManager:
     """ Manager that periodically checks the status of the MongoDB objects in the cluster. """
-
-    STREAM_REQUEST_TIMEOUT = (15.0, 5.0)  # connect, read timeout
 
     def __init__(self) -> None:
         self._cluster_versions: Dict[Tuple[str, str], str] = {}  # format: {(cluster_name, namespace): resource_version}

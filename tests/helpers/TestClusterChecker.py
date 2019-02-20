@@ -3,19 +3,19 @@
 # -*- coding: utf-8 -*-
 from unittest import TestCase
 from unittest.mock import patch, call
-from mongoOperator.ClusterManager import ClusterChecker
+from mongoOperator.ClusterManager import ClusterManager
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from tests.test_utils import getExampleClusterDefinition
 from bson.json_util import loads
 
 
-class TestClusterChecker(TestCase):
+class TestClusterManager(TestCase):
     maxDiff = None
 
     def setUp(self):
         super().setUp()
         with patch("mongoOperator.ClusterManager.KubernetesService") as ks:
-            self.checker = ClusterChecker()
+            self.checker = ClusterManager()
             self.kubernetes_service = ks.return_value
         self.cluster_dict = getExampleClusterDefinition()
         self.cluster_dict["metadata"]["resourceVersion"] = "100"

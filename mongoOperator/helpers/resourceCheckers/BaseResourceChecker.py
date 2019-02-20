@@ -19,8 +19,6 @@ class BaseResourceChecker:
     Base class for services that can check Kubernetes resources.
     """
 
-    # this is the resource type, e.g. V1Service or V1StatefulSet.
-
     def __init__(self, kubernetes_service: KubernetesService):
         self.kubernetes_service = kubernetes_service
 

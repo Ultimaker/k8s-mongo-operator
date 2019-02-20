@@ -37,7 +37,6 @@ class HeartbeatListener(ServerHeartbeatListener):
         When the heartbeat arrived.
         :param event: The event.
         """
-        # The reply.document attribute was added in PyMongo 3.4.
         logging.debug("Heartbeat to server %s succeeded with reply %s", event.connection_id, event.reply.document)
         self._hosts[event.connection_id] = 1
 
