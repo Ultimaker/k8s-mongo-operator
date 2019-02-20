@@ -50,7 +50,7 @@ class TestHeartbeatLogger(TestCase):
                                              all_hosts_ready_callback=self._onAllHostsReadyCallback)
 
         # Fake two already successful hosts
-        heartbeat_logger._hosts = {"foo": 1, "bar": 1}
+        heartbeat_logger._hosts_status = {"foo": 1, "bar": 1}
 
         # Call it with invalid replicaSet configuration
         heartbeat_event_mock = MagicMock(spec=ServerHeartbeatSucceededEvent)

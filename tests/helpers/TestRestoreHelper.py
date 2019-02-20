@@ -61,7 +61,6 @@ class TestRestoreHelper(TestCase):
         restore_mock.reset_mock()
 
         self.cluster_dict = getExampleClusterDefinition()
-        print(repr(self.cluster_dict))
         self.cluster_object = V1MongoClusterConfiguration(**self.cluster_dict)
 
         self.restore_helper.restoreIfNeeded(self.cluster_object)
@@ -112,7 +111,16 @@ class TestRestoreHelper(TestCase):
 
         self.assertEqual("Could not restore '" + expected_backup_name + "' after 4 retries!", str(context.exception))
         self.assertEqual(4, subprocess_mock.call_count)
-        # TODO: assert calls on unused mocks
+        self.assertEqual([call.from_service_account_info({"user": "password"})], gcs_service_mock.mock_calls)
+        expected_storage_calls = [
+            call(gcs_service_mock.from_service_account_info.return_value.project_id,
+                 gcs_service_mock.from_service_account_info.return_value),
+            call().get_bucket("ultimaker-mongo-backups"),
+            call().get_bucket().blob("test-backups/" + expected_backup_name),
+            call().get_bucket().blob().download_to_filename("/tmp/" + expected_backup_name),
+        ]
+        self.assertEqual(expected_storage_calls, storage_mock.mock_calls)
+        self.assertFalse(os_mock.called, "os_mock should not have been called")
 
     @patch("mongoOperator.helpers.RestoreHelper.os")
     @patch("mongoOperator.helpers.RestoreHelper.StorageClient")
@@ -126,7 +134,15 @@ class TestRestoreHelper(TestCase):
 
         os_mock.remove.assert_called_with("/tmp/" + expected_backup_name)
         self.assertEqual(1, subprocess_mock.call_count)
-        # TODO: assert calls on unused mocks
+        self.assertEqual([call.from_service_account_info({"user": "password"})], gcs_service_mock.mock_calls)
+        expected_storage_calls = [
+            call(gcs_service_mock.from_service_account_info.return_value.project_id,
+                 gcs_service_mock.from_service_account_info.return_value),
+            call().get_bucket("ultimaker-mongo-backups"),
+            call().get_bucket().blob("test-backups/" + expected_backup_name),
+            call().get_bucket().blob().download_to_filename("/tmp/" + expected_backup_name),
+        ]
+        self.assertEqual(expected_storage_calls, storage_mock.mock_calls)
 
     @patch("mongoOperator.helpers.RestoreHelper.check_output")
     def test_restore_gcs_bad_credentials(self, subprocess_mock):

@@ -14,7 +14,7 @@ class TestMongoOperator(TestCase):
     @patch("mongoOperator.MongoOperator.sleep")
     @patch("mongoOperator.MongoOperator.ClusterManager")
     def test_run(self, checker_mock, sleep_mock):
-        checker_mock.return_value.collectGarbage.side_effect = None, Exception()  # break the 3rd run
+        checker_mock.return_value.collectGarbage.side_effect = None, Exception()  # break the 2nd run
 
         operator = MongoOperator(sleep_per_run=0.01)
         with self.assertRaises(Exception):

@@ -20,7 +20,7 @@ class HeartbeatListener(ServerHeartbeatListener):
         super().__init__()
         self._cluster_object: V1MongoClusterConfiguration = cluster_object
         self._expected_host_count: int = cluster_object.spec.mongodb.replicas
-        self._hosts: Dict[str, int] = {}
+        self._hosts_status: Dict[str, int] = {}
         self._all_hosts_ready_callback: Callable[[V1MongoClusterConfiguration], None] = all_hosts_ready_callback
         self._callback_executed = False
 
@@ -30,7 +30,8 @@ class HeartbeatListener(ServerHeartbeatListener):
         :param event: The event.
         """
         logging.debug("Heartbeat sent to server %s", event.connection_id)
-        self._hosts[event.connection_id] = 0
+        # A value of 0 indicates we know about the server, but not if it's alive
+        self._hosts_status[event.connection_id] = 0
 
     def succeeded(self, event: ServerHeartbeatSucceededEvent) -> None:
         """
@@ -38,14 +39,15 @@ class HeartbeatListener(ServerHeartbeatListener):
         :param event: The event.
         """
         logging.debug("Heartbeat to server %s succeeded with reply %s", event.connection_id, event.reply.document)
-        self._hosts[event.connection_id] = 1
+        # A value of 1 indicates pymongo was able to connect successfully
+        self._hosts_status[event.connection_id] = 1
 
         if self._callback_executed:
             # The callback was already executed so we don't have to again.
             logging.debug("The callback was already executed")
             return
 
-        host_count_found = len(list(filter(lambda x: self._hosts[x] == 1, self._hosts)))
+        host_count_found = len(list(filter(lambda x: self._hosts_status[x] == 1, self._hosts_status)))
         if self._expected_host_count != host_count_found:
             # The amount of returned hosts was different than expected.
             logging.debug("The host count did not match the expected host count: %s found, %s expected",
@@ -53,7 +55,7 @@ class HeartbeatListener(ServerHeartbeatListener):
             return
 
         # Only execute the callback on the first host
-        if list(self._hosts.keys())[0] == event.connection_id:
+        if list(self._hosts_status.keys())[0] == event.connection_id:
             self._all_hosts_ready_callback(self._cluster_object)
             self._callback_executed = True
 
@@ -64,4 +66,5 @@ class HeartbeatListener(ServerHeartbeatListener):
         """
         logging.warning("Heartbeat to server %s failed with error %s",
                         event.connection_id, event.reply)
-        self._hosts[event.connection_id] = -1
+        # A value of -1 indicates pymongo was unable to connect
+        self._hosts_status[event.connection_id] = -1
