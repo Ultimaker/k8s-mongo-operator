@@ -3,8 +3,8 @@ set -eo pipefail
 
 EXAMPLE_FILE=${1:-examples/mongo-3-replicas.yaml}
 
-if ! [ -e "google_credentials.json" ]; then
-    echo "google_credentials.json file is missing, aborting."
+if ! [[ -e "google-credentials.json" ]]; then
+    echo "google-credentials.json file is missing, aborting."
     exit -1
 fi
 
@@ -38,7 +38,7 @@ ${KUBECTL} describe deploy mongo-operator
 if ${KUBECTL} get secret storage-serviceaccount 1>/dev/null; then
     ${KUBECTL} delete secret storage-serviceaccount
 fi
-${KUBECTL} create secret generic storage-serviceaccount --from-file=json=google_credentials.json
+${KUBECTL} create secret generic storage-serviceaccount --from-file=json=google-credentials.json
 
 # wait for the pod to startup to retrieve its name
 sleep 10
