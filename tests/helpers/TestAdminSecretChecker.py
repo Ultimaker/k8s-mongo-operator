@@ -1,13 +1,11 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-from typing import cast
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 from mongoOperator.helpers.resourceCheckers.AdminSecretChecker import AdminSecretChecker
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
-from mongoOperator.services.KubernetesService import KubernetesService
 from tests.test_utils import getExampleClusterDefinition
 
 
@@ -16,7 +14,7 @@ class TestAdminSecretChecker(TestCase):
     def setUp(self):
         super().setUp()
         self.kubernetes_service = MagicMock()
-        self.checker = AdminSecretChecker(cast(KubernetesService, self.kubernetes_service))
+        self.checker = AdminSecretChecker(self.kubernetes_service)
         self.cluster_object = V1MongoClusterConfiguration(**getExampleClusterDefinition())
         self.secret_name = self.cluster_object.metadata.name + "-admin-credentials"
 

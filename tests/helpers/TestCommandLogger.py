@@ -1,10 +1,7 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-from typing import cast
 from unittest import TestCase
-
-from pymongo.monitoring import CommandStartedEvent, CommandFailedEvent, CommandSucceededEvent
 
 from mongoOperator.helpers.listeners.mongo.CommandLogger import CommandLogger
 
@@ -21,10 +18,10 @@ class TestCommandLogger(TestCase):
     command_logger = CommandLogger()
 
     def test_started(self):
-        self.command_logger.started(event = cast(CommandStartedEvent, CommandEventMock()))
+        self.command_logger.started(event=CommandEventMock())
 
     def test_succeeded(self):
-        self.command_logger.succeeded(event = cast(CommandSucceededEvent, CommandEventMock()))
+        self.command_logger.succeeded(event=CommandEventMock())
 
     def test_failed(self):
-        self.command_logger.failed(event = cast(CommandFailedEvent, CommandEventMock()))
+        self.command_logger.failed(event=CommandEventMock())

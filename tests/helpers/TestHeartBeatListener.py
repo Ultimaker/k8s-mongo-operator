@@ -1,7 +1,6 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-from typing import cast
 from unittest import TestCase
 from unittest.mock import Mock, MagicMock
 
@@ -22,7 +21,7 @@ class TestHeartbeatLogger(TestCase):
         heartbeat_logger = HeartbeatListener(self.cluster_object,
                                              all_hosts_ready_callback=self._onAllHostsReadyCallback)
 
-        heartbeat_logger.started(event=cast(ServerHeartbeatStartedEvent, Mock(spec=ServerHeartbeatStartedEvent)))
+        heartbeat_logger.started(event=Mock(spec=ServerHeartbeatStartedEvent))
 
     def test_succeeded(self):
         heartbeat_logger = HeartbeatListener(self.cluster_object,
@@ -32,17 +31,17 @@ class TestHeartbeatLogger(TestCase):
         heartbeat_event_mock.reply.document = {"info": ""}
         heartbeat_event_mock.connection_id = "host-1", "27017"
 
-        heartbeat_logger.succeeded(event=cast(ServerHeartbeatSucceededEvent, heartbeat_event_mock))
+        heartbeat_logger.succeeded(event=heartbeat_event_mock)
         heartbeat_event_mock.connection_id = "host-2", "27017"
-        heartbeat_logger.succeeded(event=cast(ServerHeartbeatSucceededEvent, heartbeat_event_mock))
+        heartbeat_logger.succeeded(event=heartbeat_event_mock)
 
         heartbeat_event_mock.connection_id = "host-3", "27017"
-        heartbeat_logger.succeeded(event=cast(ServerHeartbeatSucceededEvent, heartbeat_event_mock))
+        heartbeat_logger.succeeded(event=heartbeat_event_mock)
 
         heartbeat_event_mock.reply.document = {"info": ""}
         heartbeat_event_mock.connection_id = "host-1", "27017"
 
-        heartbeat_logger.succeeded(event=cast(ServerHeartbeatSucceededEvent, heartbeat_event_mock))
+        heartbeat_logger.succeeded(event=heartbeat_event_mock)
 
         self._onAllHostsReadyCallback.assert_called_once_with(self.cluster_object)
 
@@ -56,16 +55,16 @@ class TestHeartbeatLogger(TestCase):
         # Call it with invalid replicaSet configuration
         heartbeat_event_mock = MagicMock(spec=ServerHeartbeatSucceededEvent)
         heartbeat_event_mock.reply.document = {"info": "Does not have a valid replica set config"}
-        heartbeat_logger.succeeded(event=cast(ServerHeartbeatSucceededEvent, heartbeat_event_mock))
+        heartbeat_logger.succeeded(event=heartbeat_event_mock)
 
     def test_succeeded_already_called(self):
         heartbeat_logger = HeartbeatListener(self.cluster_object,
                                              all_hosts_ready_callback=self._onAllHostsReadyCallback)
 
         heartbeat_logger._callback_executed = True
-        heartbeat_logger.succeeded(event=cast(ServerHeartbeatSucceededEvent, MagicMock()))
+        heartbeat_logger.succeeded(event=MagicMock())
 
     def test_failed(self):
         heartbeat_logger = HeartbeatListener(self.cluster_object,
                                              all_hosts_ready_callback=self._onAllHostsReadyCallback)
-        heartbeat_logger.failed(event=cast(ServerHeartbeatFailedEvent, Mock(spec=ServerHeartbeatFailedEvent)))
+        heartbeat_logger.failed(event=Mock(spec=ServerHeartbeatFailedEvent))

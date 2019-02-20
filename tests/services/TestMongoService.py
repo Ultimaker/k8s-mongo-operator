@@ -5,13 +5,11 @@ import json
 from base64 import b64encode
 
 from kubernetes.client import V1Secret, V1ObjectMeta
-from typing import Union
 from unittest import TestCase
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import MagicMock, patch
 
 from mongoOperator.helpers.MongoResources import MongoResources
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
-from mongoOperator.services.KubernetesService import KubernetesService
 from mongoOperator.services.MongoService import MongoService
 from tests.test_utils import getExampleClusterDefinition
 from bson.json_util import loads
@@ -25,7 +23,7 @@ class TestMongoService(TestCase):
 
     def setUp(self):
         super().setUp()
-        self.kubernetes_service: Union[MagicMock, KubernetesService] = MagicMock()
+        self.kubernetes_service = MagicMock()
         self.dummy_credentials = b64encode(json.dumps({"user": "password"}).encode())
         self.kubernetes_service.getSecret.return_value = V1Secret(
             metadata=V1ObjectMeta(name="mongo-cluster-admin-credentials", namespace="default"),

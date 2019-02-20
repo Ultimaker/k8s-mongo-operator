@@ -3,7 +3,6 @@
 # -*- coding: utf-8 -*-
 import json
 from base64 import b64encode
-from typing import cast
 
 from kubernetes.client import V1Secret
 from subprocess import CalledProcessError, SubprocessError
@@ -14,7 +13,6 @@ from unittest.mock import MagicMock, patch, call
 
 from mongoOperator.helpers.BackupHelper import BackupHelper
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
-from mongoOperator.services.KubernetesService import KubernetesService
 from tests.test_utils import getExampleClusterDefinition
 
 
@@ -23,7 +21,7 @@ class TestBackupChecker(TestCase):
         self.cluster_dict = getExampleClusterDefinition()
         self.cluster_object = V1MongoClusterConfiguration(**self.cluster_dict)
         self.kubernetes_service = MagicMock()
-        self.checker = BackupHelper(cast(KubernetesService, self.kubernetes_service))
+        self.checker = BackupHelper(self.kubernetes_service)
 
         self.dummy_credentials = b64encode(json.dumps({"user": "password"}).encode())
         self.kubernetes_service.getSecret.return_value = V1Secret(data={"json": self.dummy_credentials})

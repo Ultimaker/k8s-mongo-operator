@@ -1,7 +1,6 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-from typing import cast
 from unittest import TestCase
 from unittest.mock import MagicMock, call
 
@@ -9,7 +8,6 @@ from kubernetes.client.rest import ApiException
 
 from mongoOperator.helpers.resourceCheckers.BaseResourceChecker import BaseResourceChecker
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
-from mongoOperator.services.KubernetesService import KubernetesService
 from tests.test_utils import getExampleClusterDefinition
 
 
@@ -18,7 +16,7 @@ class TestBaseResourceChecker(TestCase):
 
     def setUp(self):
         self.kubernetes_service = MagicMock()
-        self.checker = BaseResourceChecker(cast(KubernetesService, self.kubernetes_service))
+        self.checker = BaseResourceChecker(self.kubernetes_service)
         self.cluster_object = V1MongoClusterConfiguration(**getExampleClusterDefinition())
 
     def test_getClusterName(self):
