@@ -32,11 +32,15 @@ class TestHeartbeatLogger(TestCase):
         heartbeat_event_mock.connection_id = "host-1", "27017"
 
         heartbeat_logger.succeeded(event=heartbeat_event_mock)
+        self.assertFalse(self._onAllHostsReadyCallback.called)
+
         heartbeat_event_mock.connection_id = "host-2", "27017"
         heartbeat_logger.succeeded(event=heartbeat_event_mock)
+        self.assertFalse(self._onAllHostsReadyCallback.called)
 
         heartbeat_event_mock.connection_id = "host-3", "27017"
         heartbeat_logger.succeeded(event=heartbeat_event_mock)
+        self.assertFalse(self._onAllHostsReadyCallback.called)
 
         heartbeat_event_mock.reply.document = {"info": ""}
         heartbeat_event_mock.connection_id = "host-1", "27017"
@@ -45,26 +49,16 @@ class TestHeartbeatLogger(TestCase):
 
         self._onAllHostsReadyCallback.assert_called_once_with(self.cluster_object)
 
-    def test_succeeded_invalid_replicaSet(self):
-        heartbeat_logger = HeartbeatListener(self.cluster_object,
-                                             all_hosts_ready_callback=self._onAllHostsReadyCallback)
-
-        # Fake two already successful hosts
-        heartbeat_logger._hosts_status = {"foo": 1, "bar": 1}
-
-        # Call it with invalid replicaSet configuration
-        heartbeat_event_mock = MagicMock(spec=ServerHeartbeatSucceededEvent)
-        heartbeat_event_mock.reply.document = {"info": "Does not have a valid replica set config"}
-        heartbeat_logger.succeeded(event=heartbeat_event_mock)
-
     def test_succeeded_already_called(self):
         heartbeat_logger = HeartbeatListener(self.cluster_object,
                                              all_hosts_ready_callback=self._onAllHostsReadyCallback)
 
         heartbeat_logger._callback_executed = True
         heartbeat_logger.succeeded(event=MagicMock())
+        self.assertFalse(self._onAllHostsReadyCallback.called)
 
     def test_failed(self):
         heartbeat_logger = HeartbeatListener(self.cluster_object,
                                              all_hosts_ready_callback=self._onAllHostsReadyCallback)
         heartbeat_logger.failed(event=Mock(spec=ServerHeartbeatFailedEvent))
+        self.assertFalse(self._onAllHostsReadyCallback.called)
