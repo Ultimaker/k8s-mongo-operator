@@ -4,16 +4,15 @@
 import logging
 from time import sleep
 from unittest.mock import patch
+import yaml
 
-from kubernetes.client.rest import ApiException
-from kubernetes.stream import stream
 from typing import Dict, Optional
 
-import yaml
 from kubernetes.config import load_incluster_config
 from kubernetes import client
 from kubernetes.client import Configuration, V1DeleteOptions, V1ServiceList, V1StatefulSetList, V1SecretList, \
     V1beta1CustomResourceDefinition
+from kubernetes.client.rest import ApiException
 
 from Settings import Settings
 from mongoOperator.helpers.IgnoreIfExists import IgnoreIfExists
@@ -56,13 +55,13 @@ class KubernetesService:
         # Create it if our CRD doesn't exists yet.
         logging.info("Custom resource definition %s not found in cluster (available: %s), creating it...",
                      Settings.CUSTOM_OBJECT_RESOURCE_PLURAL, available_resources)
-        with open("mongo_crd.yaml") as f:
-            definition_dict = yaml.load(f)
+        with open("mongo_crd.yaml") as custom_resource_file:
+            definition_dict = yaml.load(custom_resource_file)
         body = KubernetesResources.deserialize(definition_dict, "V1beta1CustomResourceDefinition")
 
         # issue with kubernetes causes status.condition==null, which raises an exception and breaks the connection.
         # by ignoring the validation of this field in the client, we can keep the connection open.
-        with patch("kubernetes.client.models.v1beta1_custom_resource_definition_status.V1beta1CustomResourceDefinitionStatus.conditions"):
+        with patch("kubernetes.client.models.v1beta1_custom_resource_definition_status.V1beta1CustomResourceDefinitionStatus.conditions"):  # noqa: E501 pylint: disable=C0301
             return self.extensions_api.create_custom_resource_definition(body)
 
     def listMongoObjects(self, **kwargs) -> Dict[str, any]:
@@ -80,11 +79,11 @@ class KubernetesService:
                                                                           Settings.CUSTOM_OBJECT_API_VERSION,
                                                                           Settings.CUSTOM_OBJECT_RESOURCE_PLURAL,
                                                                           **kwargs)
-            except ApiException as e:
-                if e.status != 404:
+            except ApiException as api_exception:
+                if api_exception.status != 404:
                     raise
                 logging.info("Could not list the custom Mongo objects: %s. The definition is probably being "
-                             "initialized, we wait %s seconds.", e.reason, self.LIST_CUSTOM_OBJECTS_WAIT)
+                             "initialized, we wait %s seconds.", api_exception.reason, self.LIST_CUSTOM_OBJECTS_WAIT)
                 sleep(self.LIST_CUSTOM_OBJECTS_WAIT)
 
         raise TimeoutError("Could not list the custom mongo objects after {} retries"
@@ -103,21 +102,21 @@ class KubernetesService:
                                                                     Settings.CUSTOM_OBJECT_RESOURCE_PLURAL,
                                                                     name)
 
-    def listAllServicesWithLabels(self, labels: Dict[str, str] = DEFAULT_LABELS) -> V1ServiceList:
+    def listAllServicesWithLabels(self, labels: Optional[Dict[str, str]] = None) -> V1ServiceList:
         """Get all services with the given labels."""
-        label_selector = KubernetesResources.createLabelSelector(labels)
+        label_selector = KubernetesResources.createLabelSelector(labels or self.DEFAULT_LABELS)
         logging.debug("Getting all services with labels %s", label_selector)
         return self.core_api.list_service_for_all_namespaces(label_selector=label_selector)
 
-    def listAllStatefulSetsWithLabels(self, labels: Dict[str, str] = DEFAULT_LABELS) -> V1StatefulSetList:
+    def listAllStatefulSetsWithLabels(self, labels: Dict[str, str] = None) -> V1StatefulSetList:
         """Get all stateful sets with the given labels."""
-        label_selector = KubernetesResources.createLabelSelector(labels)
+        label_selector = KubernetesResources.createLabelSelector(labels or self.DEFAULT_LABELS)
         logging.debug("Getting all stateful sets with labels %s", label_selector)
         return self.apps_api.list_stateful_set_for_all_namespaces(label_selector=label_selector)
 
-    def listAllSecretsWithLabels(self, labels: Dict[str, str] = DEFAULT_LABELS) -> V1SecretList:
+    def listAllSecretsWithLabels(self, labels: Dict[str, str] = None) -> V1SecretList:
         """Get al secrets with the given labels."""
-        label_selector = KubernetesResources.createLabelSelector(labels)
+        label_selector = KubernetesResources.createLabelSelector(labels or self.DEFAULT_LABELS)
         logging.debug("Getting all secrets with labels %s", label_selector)
         return self.core_api.list_secret_for_all_namespaces(label_selector=label_selector)
 
@@ -140,7 +139,6 @@ class KubernetesService:
         :param labels: Optional labels for this secret, defaults to the default labels (see `cls.createDefaultLabels`).
         :return: The secret if successful, None otherwise.
         """
-        # Create the secret object.
         secret_body = KubernetesResources.createSecret(secret_name, namespace, secret_data, labels)
         logging.info("Creating secret %s in namespace %s", secret_name, namespace)
         with IgnoreIfExists():
@@ -216,6 +214,7 @@ class KubernetesService:
             return self.core_api.delete_namespaced_service(name, namespace, body)
         except TypeError:
             # bug in kubernetes client 5.0.0 - body parameter was missing.
+            # pylint: disable=E1120
             return self.core_api.delete_namespaced_service(name, namespace)
 
     def getStatefulSet(self, name: str, namespace: str) -> client.V1beta1StatefulSet:
@@ -261,15 +260,3 @@ class KubernetesService:
         body = V1DeleteOptions()
         logging.info("Deleting stateful set %s @ ns/%s.", name, namespace)
         return self.apps_api.delete_namespaced_stateful_set(name, namespace, body)
-
-    def execInPod(self, container, pod_name, namespace, exec_cmd) -> str:
-        """
-        Executes a command in the pod with the given name.
-        :param container: The container name.
-        :param pod_name: The pod name.
-        :param namespace: The pod namespace.
-        :param exec_cmd: The command to execute.
-        :return: The command output.
-        """
-        return stream(self.core_api.connect_get_namespaced_pod_exec, pod_name, namespace, command=exec_cmd,
-                      container=container, stderr=True, stdin=False, stdout=True, tty=False)

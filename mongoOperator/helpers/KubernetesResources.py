@@ -1,7 +1,6 @@
 # Copyright (c) 2018 Ultimaker
 # !/usr/bin/env python
 # -*- coding: utf-8 -*-
-
 from kubernetes import client
 from kubernetes.client import models as k8s_models
 from typing import Dict, Optional
@@ -11,10 +10,8 @@ from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfi
 
 
 class KubernetesResources:
-    """
-    Helper class responsible for creating the Kubernetes model objects.
-    """
-    
+    """ Helper class responsible for creating the Kubernetes model objects. """
+
     # These are fixed values. They need to be these exact values for Mongo to work properly with the operator.
     MONGO_IMAGE = "mongo:3.6.4"
     MONGO_NAME = "mongodb"
@@ -31,7 +28,7 @@ class KubernetesResources:
     DEFAULT_STORAGE_SIZE = "30Gi"
     DEFAULT_STORAGE_MOUNT_PATH = "/data/db"
     DEFAULT_STORAGE_CLASS_NAME = None  # when None is passed the value is simply ignored by Kubernetes
-    
+
     # Default resource allocation.
     # See https://docs.mongodb.com/manual/administration/production-notes/#allocate-sufficient-ram-and-cpu.
     DEFAULT_CPU_LIMIT = "1"

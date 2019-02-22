@@ -7,7 +7,7 @@ import os
 from mongoOperator.MongoOperator import MongoOperator
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.basicConfig(format="%(asctime)s [%(levelname)s] %(module)s:%(lineno)s: %(message)s",
                         level=os.getenv("LOGGING_LEVEL", "DEBUG"))
 

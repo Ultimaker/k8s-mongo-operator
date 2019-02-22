@@ -1,2 +1,4 @@
 pytest
 coverage
+flake8-quotes
+pylint-quotes

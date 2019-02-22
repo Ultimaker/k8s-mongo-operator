@@ -4,7 +4,7 @@
 import logging
 from time import sleep
 
-from mongoOperator.helpers.ClusterChecker import ClusterChecker
+from mongoOperator.ClusterManager import ClusterManager
 
 
 class MongoOperator:
@@ -22,17 +22,16 @@ class MongoOperator:
         """
         Runs the mongo operator forever (until a kill command is received).
         """
-        checker = ClusterChecker()
+        checker = ClusterManager()
         try:
             while True:
                 logging.info("**** Running Cluster Check ****")
                 try:
                     checker.checkExistingClusters()
                     checker.collectGarbage()
-                    # TODO: Use checker.streamEvents()
-                except Exception as e:
-                    logging.exception(e)
-
+                except Exception as global_exception:
+                    logging.exception(global_exception)
+                    raise
                 logging.info("Checks done, waiting %s seconds", self._sleep_per_run)
                 sleep(self._sleep_per_run)
         except KeyboardInterrupt:

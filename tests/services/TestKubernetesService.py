@@ -34,7 +34,7 @@ class TestKubernetesService(TestCase):
         self.cpu_limit = "100m"
         self.memory_limit = "64Mi"
         self.stateful_set = self._createStatefulSet()
-        
+
     def _createStatefulSet(self) -> V1beta1StatefulSet:
         return V1beta1StatefulSet(
             metadata=self._createMeta(self.name),
@@ -81,11 +81,11 @@ class TestKubernetesService(TestCase):
             name=name,
             namespace=self.namespace,
         )
-    
+
     def _createResourceLimits(self) -> V1ResourceRequirements:
         return V1ResourceRequirements(
-            limits = {"cpu": self.cpu_limit, "memory": self.memory_limit},
-            requests = {"cpu": self.cpu_limit, "memory": self.memory_limit}
+            limits={"cpu": self.cpu_limit, "memory": self.memory_limit},
+            requests={"cpu": self.cpu_limit, "memory": self.memory_limit}
         )
 
     def test___init__(self, client_mock):
@@ -158,7 +158,7 @@ class TestKubernetesService(TestCase):
         result = service.listMongoObjects(param="value")
         expected_calls = [
             call.ApiextensionsV1beta1Api().list_custom_resource_definition(),
-            call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongos", param='value')
+            call.CustomObjectsApi().list_cluster_custom_object("operators.ultimaker.com", "v1", "mongos", param="value")
         ]
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.CustomObjectsApi().list_cluster_custom_object.return_value, result)
@@ -177,7 +177,7 @@ class TestKubernetesService(TestCase):
 
         expected_calls = [
             call.ApiextensionsV1beta1Api().list_custom_resource_definition(),
-            call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongos", param='value')
+            call.CustomObjectsApi().list_cluster_custom_object("operators.ultimaker.com", "v1", "mongos", param="value")
         ]
         self.assertEqual(expected_calls, client_mock.mock_calls)
 
@@ -195,9 +195,12 @@ class TestKubernetesService(TestCase):
 
         expected_calls = [
             call.ApiextensionsV1beta1Api().list_custom_resource_definition(),
-            call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongos", param='value'),
-            call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongos", param='value'),
-            call.CustomObjectsApi().list_cluster_custom_object('operators.ultimaker.com', 'v1', "mongos", param='value'),
+            call.CustomObjectsApi().list_cluster_custom_object("operators.ultimaker.com", "v1", "mongos",
+                                                               param="value"),
+            call.CustomObjectsApi().list_cluster_custom_object("operators.ultimaker.com", "v1", "mongos",
+                                                               param="value"),
+            call.CustomObjectsApi().list_cluster_custom_object("operators.ultimaker.com", "v1", "mongos",
+                                                               param="value"),
         ]
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual("Could not list the custom mongo objects after 3 retries", str(context.exception))
@@ -208,7 +211,7 @@ class TestKubernetesService(TestCase):
 
         result = service.getMongoObject(self.name, self.namespace)
         expected_calls = [call.CustomObjectsApi().get_namespaced_custom_object(
-            'operators.ultimaker.com', 'v1', self.namespace, 'mongos', self.name
+            "operators.ultimaker.com", "v1", self.namespace, "mongos", self.name
         )]
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.CustomObjectsApi().get_namespaced_custom_object.return_value, result)
@@ -367,8 +370,8 @@ class TestKubernetesService(TestCase):
             metadata=self._createMeta(self.name),
             spec=V1ServiceSpec(
                 cluster_ip="None",
-                ports=[V1ServicePort(name='mongod', port=27017, protocol='TCP')],
-                selector={'heritage': 'mongos', 'name': self.name, 'operated-by': 'operators.ultimaker.com'},
+                ports=[V1ServicePort(name="mongod", port=27017, protocol="TCP")],
+                selector={"heritage": "mongos", "name": self.name, "operated-by": "operators.ultimaker.com"},
             )
         )
         expected_calls = [call.CoreV1Api().create_namespaced_service(self.namespace, expected_body)]
@@ -385,8 +388,8 @@ class TestKubernetesService(TestCase):
             metadata=self._createMeta(self.name),
             spec=V1ServiceSpec(
                 cluster_ip="None",
-                ports=[V1ServicePort(name='mongod', port=27017, protocol='TCP')],
-                selector={'heritage': 'mongos', 'name': self.name, 'operated-by': 'operators.ultimaker.com'},
+                ports=[V1ServicePort(name="mongod", port=27017, protocol="TCP")],
+                selector={"heritage": "mongos", "name": self.name, "operated-by": "operators.ultimaker.com"},
             )
         )
         result = service.updateService(self.cluster_object)
@@ -472,14 +475,3 @@ class TestKubernetesService(TestCase):
         ]
         self.assertEqual(expected_calls, client_mock.mock_calls)
         self.assertEqual(client_mock.AppsV1beta1Api().delete_namespaced_stateful_set.return_value, result)
-
-    @patch("mongoOperator.services.KubernetesService.stream")
-    def test_execInPod(self, stream_mock, client_mock):
-        service = KubernetesService()
-        client_mock.reset_mock()
-        result = service.execInPod("container", "pod_name", self.namespace, "ls")
-        stream_mock.assert_called_once_with(client_mock.CoreV1Api.return_value.connect_get_namespaced_pod_exec,
-                                            'pod_name', 'default', command='ls', container='container',
-                                            stderr=True, stdin=False, stdout=True, tty=False)
-        self.assertEqual(stream_mock.return_value, result)
-        self.assertEqual([], client_mock.mock_calls)

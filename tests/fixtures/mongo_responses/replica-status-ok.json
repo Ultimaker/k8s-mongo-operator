@@ -1,0 +1,179 @@
+{
+	"set": "mongotest",
+	"date": {
+		"$date": 1549871357279
+	},
+	"myState": 1,
+	"term": 1,
+	"syncingTo": "",
+	"syncSourceHost": "",
+	"syncSourceId": -1,
+	"heartbeatIntervalMillis": 2000,
+	"optimes": {
+		"lastCommittedOpTime": {
+			"ts": {
+				"$timestamp": {
+					"t": 0,
+					"i": 0
+				}
+			},
+			"t": -1
+		},
+		"appliedOpTime": {
+			"ts": {
+				"$timestamp": {
+					"t": 1549871355,
+					"i": 1
+				}
+			},
+			"t": -1
+		},
+		"durableOpTime": {
+			"ts": {
+				"$timestamp": {
+					"t": 1549871355,
+					"i": 1
+				}
+			},
+			"t": -1
+		}
+	},
+	"lastStableCheckpointTimestamp": {
+		"$timestamp": {
+			"t": 0,
+			"i": 0
+		}
+	},
+	"members": [
+		{
+			"_id": 0,
+			"name": "c87cdec35e3c:27017",
+			"health": 1.0,
+			"state": 1,
+			"stateStr": "PRIMARY",
+			"uptime": 90,
+			"optime": {
+				"ts": {
+					"$timestamp": {
+						"t": 1549871355,
+						"i": 1
+					}
+				},
+				"t": -1
+			},
+			"optimeDate": {
+				"$date": 1549871355000
+			},
+			"syncingTo": "",
+			"syncSourceHost": "",
+			"syncSourceId": -1,
+			"infoMessage": "",
+			"electionTime": {
+				"$timestamp": {
+					"t": 1549871355,
+					"i": 2
+				}
+			},
+			"electionDate": {
+				"$date": 1549871355000
+			},
+			"configVersion": 1,
+			"self": true,
+			"lastHeartbeatMessage": ""
+		},
+		{
+			"_id": 0,
+			"name": "c87cdec35e3d:27017",
+			"health": 1.0,
+			"state": 1,
+			"stateStr": "SECONDARY",
+			"uptime": 90,
+			"optime": {
+				"ts": {
+					"$timestamp": {
+						"t": 1549871355,
+						"i": 1
+					}
+				},
+				"t": -1
+			},
+			"optimeDate": {
+				"$date": 1549871355000
+			},
+			"syncingTo": "",
+			"syncSourceHost": "",
+			"syncSourceId": -1,
+			"infoMessage": "",
+			"electionTime": {
+				"$timestamp": {
+					"t": 1549871355,
+					"i": 2
+				}
+			},
+			"electionDate": {
+				"$date": 1549871355000
+			},
+			"configVersion": 1,
+			"self": true,
+			"lastHeartbeatMessage": ""
+		},
+		{
+			"_id": 0,
+			"name": "c87cdec35e3e:27017",
+			"health": 1.0,
+			"state": 1,
+			"stateStr": "SECONDARY",
+			"uptime": 90,
+			"optime": {
+				"ts": {
+					"$timestamp": {
+						"t": 1549871355,
+						"i": 1
+					}
+				},
+				"t": -1
+			},
+			"optimeDate": {
+				"$date": 1549871355000
+			},
+			"syncingTo": "",
+			"syncSourceHost": "",
+			"syncSourceId": -1,
+			"infoMessage": "",
+			"electionTime": {
+				"$timestamp": {
+					"t": 1549871355,
+					"i": 2
+				}
+			},
+			"electionDate": {
+				"$date": 1549871355000
+			},
+			"configVersion": 1,
+			"self": true,
+			"lastHeartbeatMessage": ""
+		}
+	],
+	"ok": 1.0,
+	"operationTime": {
+		"$timestamp": {
+			"t": 1549871355,
+			"i": 1
+		}
+	},
+	"$clusterTime": {
+		"clusterTime": {
+			"$timestamp": {
+				"t": 1549871355,
+				"i": 2
+			}
+		},
+		"signature": {
+			"hash": {
+				"$binary": "AAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+				"$type": "00"
+			},
+			"keyId": 0
+		}
+	}
+}

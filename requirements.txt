@@ -1,5 +1,5 @@
 PyYAML
 kubernetes==8.0.0
-PyMongo
+pymongo
 croniter
 google-cloud-storage

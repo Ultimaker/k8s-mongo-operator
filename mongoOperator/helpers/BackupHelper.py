@@ -18,7 +18,7 @@ from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfi
 from mongoOperator.services.KubernetesService import KubernetesService
 
 
-class BackupChecker:
+class BackupHelper:
     """
     Class responsible for handling the Backups for the Mongo cluster.
     """
@@ -69,7 +69,7 @@ class BackupChecker:
         """
         backup_file = "/tmp/" + self.BACKUP_FILE_FORMAT.format(namespace=cluster_object.metadata.namespace,
                                                                name=cluster_object.metadata.name,
-                                                               date=now.strftime('%Y-%m-%d_%H%M%S'))
+                                                               date=now.strftime("%Y-%m-%d_%H%M%S"))
 
         pod_index = cluster_object.spec.mongodb.replicas - 1  # take last pod
         hostname = MongoResources.getMemberHostname(pod_index, cluster_object.metadata.name,

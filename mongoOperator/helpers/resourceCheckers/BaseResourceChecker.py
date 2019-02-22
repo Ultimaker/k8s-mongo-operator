@@ -11,14 +11,13 @@ from typing import TypeVar, List
 from mongoOperator.models.V1MongoClusterConfiguration import V1MongoClusterConfiguration
 from mongoOperator.services.KubernetesService import KubernetesService
 
+GenericType = TypeVar("GenericType")
+
 
 class BaseResourceChecker:
     """
     Base class for services that can check Kubernetes resources.
     """
-
-    # this is the resource type, e.g. V1Service or V1StatefulSet.
-    T = TypeVar("T")
 
     def __init__(self, kubernetes_service: KubernetesService):
         self.kubernetes_service = kubernetes_service
@@ -32,7 +31,7 @@ class BaseResourceChecker:
         """
         return resource_name
 
-    def checkResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
+    def checkResource(self, cluster_object: V1MongoClusterConfiguration) -> GenericType:
         """
         Checks whether the resource is up-to-date in Kubernetes, creating or updating it if necessary.
         :param cluster_object: The cluster object from the YAML file.
@@ -40,9 +39,9 @@ class BaseResourceChecker:
         """
         try:
             resource = self.getResource(cluster_object)
-        except ApiException as e:
+        except ApiException as api_exception:
             resource = None
-            if e.status != 404:
+            if api_exception.status != 404:
                 raise
 
         if resource:
@@ -68,15 +67,15 @@ class BaseResourceChecker:
             try:
                 self.kubernetes_service.getMongoObject(cluster_name, namespace)
                 continue
-            except ApiException as e:
-                if e.status != 404:
+            except ApiException as api_exception:
+                if api_exception.status != 404:
                     raise
 
             # The service exists but the Mongo object it belonged to does not, we have to delete it.
             self.deleteResource(cluster_name, namespace)
 
     @abstractmethod
-    def listResources(self) -> List[T]:
+    def listResources(self) -> List[GenericType]:
         """
         Retrieves a list of resource objects.
         :return: The list of available resources.
@@ -84,7 +83,7 @@ class BaseResourceChecker:
         raise NotImplementedError
 
     @abstractmethod
-    def getResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
+    def getResource(self, cluster_object: V1MongoClusterConfiguration) -> GenericType:
         """
         Retrieves the resource for the given cluster.
         :param cluster_object: The cluster object from the YAML file.
@@ -94,7 +93,7 @@ class BaseResourceChecker:
         raise NotImplementedError
 
     @abstractmethod
-    def createResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
+    def createResource(self, cluster_object: V1MongoClusterConfiguration) -> GenericType:
         """
         Creates a new resource instance.
         :param cluster_object: The cluster object from the YAML file.
@@ -103,7 +102,7 @@ class BaseResourceChecker:
         raise NotImplementedError
 
     @abstractmethod
-    def updateResource(self, cluster_object: V1MongoClusterConfiguration) -> T:
+    def updateResource(self, cluster_object: V1MongoClusterConfiguration) -> GenericType:
         """
         Updates the given resource instance.
         :param cluster_object: The cluster object from the YAML file.

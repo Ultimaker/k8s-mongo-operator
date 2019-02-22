@@ -1,0 +1,25 @@
+# Copyright (c) 2018 Ultimaker B.V.
+# This file contains the flake8 rules used in the stardust projects.
+
+# To configure Flake8 as an external tool in PyCharm, create a new External Tool with the settings:
+#
+# Name: Flake8
+# Program: Check with 'which flake8'. For example: /home/dschiavini/.local/bin/flake8
+# Arguments: $ContentRoot$/$FileDirRelativeToProjectRoot$ --config=$ContentRoot$/lib/stardustCommons/.flake8 --count
+# Working directory: $ContentRoot$
+# Output filters: $FILE_PATH$:$LINE$:$COLUMN$:.*
+#
+# You can add a keyboard shortcut in the keymap settings. Select the folder you want to check (e.g. the root of the
+# project) before running the external tool.
+#
+# If you find a better way to configure the external tool please edit this file.
+
+[flake8]
+# E251 allows us to add extra spaces in constructors and method calls, i.e. method(value = result).
+# F401 is ignored because it gives false positives for # type comments
+# W503 forbids line breaks before binary operators, we use instead W504 to forbid breaks after the operators
+ignore = E251, F401, W503
+exclude = .git,__pycache__,node_modules,libCharon,venv
+max-complexity = 6
+max-line-length = 120
+inline-quotes = double
