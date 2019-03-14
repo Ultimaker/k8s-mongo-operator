@@ -70,7 +70,9 @@ The following options are available to use in the `spec` section of the `yaml` c
 | `mongodb.storage_data_path` | /data/db | The path on which the persistent volumes are mounted in the Mongo containers. |
 | `mongodb.storage_class_name` | - | The name of the storage class to use to create the persistent values. If not passed it will use the Kubernetes cluster default storage class name. |
 | `mongodb.cpu_limit` | 1 | The CPU limit of each container. |
+| `mongodb.cpu_request` | 0.5 | The CPU request of each container. |
 | `mongodb.memory_limit` | 2Gi | The memory limit of each container. |
+| `mongodb.memory_request` | 1Gi | The memory request of each container. |
 | `mongodb.wired_tiger_cache_size` | 0.25 | The wired tiger cache size. |
 | `mongodb.replicas` | - | The amount of MongoDB replicas that should be available in the replica set. Must be an uneven positive integer and minimum 3. |
 | * `backups.cron` | - | The cron on which to create a backup to cloud storage.
