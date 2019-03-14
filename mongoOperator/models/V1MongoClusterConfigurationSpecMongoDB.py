@@ -28,8 +28,14 @@ class V1MongoClusterConfigurationSpecMongoDB(BaseModel):
     # Kubernetes CPU limit of each Mongo container. Defaults to 1 (vCPU).
     cpu_limit = StringField(required=False)
 
+    # Kubernetes CPU request of each Mongo container. Defaults to 0.5 (vCPU).
+    cpu_request = StringField(required=False)
+
     # Kubernetes memory limit of each Mongo container. Defaults to 2Gi.
     memory_limit = StringField(required=False)
+
+    # Kubernetes memory request of each Mongo container. Defaults to 1Gi.
+    memory_request = StringField(required=False)
 
     # Amount of Mongo container replicas. Defaults to 3.
     replicas = MongoReplicaCountField(required=True)

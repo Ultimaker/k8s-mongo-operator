@@ -32,7 +32,9 @@ class KubernetesResources:
     # Default resource allocation.
     # See https://docs.mongodb.com/manual/administration/production-notes/#allocate-sufficient-ram-and-cpu.
     DEFAULT_CPU_LIMIT = "1"
+    DEFAULT_CPU_REQUEST = "0.5"
     DEFAULT_MEMORY_LIMIT = "2Gi"
+    DEFAULT_MEMORY_REQUEST = "1Gi"
     DEFAULT_CACHE_SIZE = "0.25"
 
     @classmethod
@@ -106,14 +108,14 @@ class KubernetesResources:
 
         # Parse cluster data object.
         name = cluster_object.metadata.name
-        namespace = cluster_object.metadata.namespace
-        replicas = cluster_object.spec.mongodb.replicas
         storage_name = cluster_object.spec.mongodb.storage_name or cls.DEFAULT_STORAGE_NAME
         storage_size = cluster_object.spec.mongodb.storage_size or cls.DEFAULT_STORAGE_SIZE
         storage_mount_path = cluster_object.spec.mongodb.storage_data_path or cls.DEFAULT_STORAGE_MOUNT_PATH
         storage_class_name = cluster_object.spec.mongodb.storage_class_name or cls.DEFAULT_STORAGE_CLASS_NAME
         cpu_limit = cluster_object.spec.mongodb.cpu_limit or cls.DEFAULT_CPU_LIMIT
+        cpu_request = cluster_object.spec.mongodb.cpu_request or cls.DEFAULT_CPU_REQUEST
         memory_limit = cluster_object.spec.mongodb.memory_limit or cls.DEFAULT_MEMORY_LIMIT
+        memory_request = cluster_object.spec.mongodb.memory_request or cls.DEFAULT_MEMORY_REQUEST
         wired_tiger_cache_size = cluster_object.spec.mongodb.wired_tiger_cache_size or cls.DEFAULT_CACHE_SIZE
 
         # create container
@@ -128,7 +130,8 @@ class KubernetesResources:
                     )
                 )
             )],
-            command=cls.MONGO_COMMAND.format(name=name, cache_size=wired_tiger_cache_size).split(),
+            command=cls.MONGO_COMMAND.format(name=name,
+                                             cache_size=wired_tiger_cache_size).split(),
             image=cls.MONGO_IMAGE,
             ports=[client.V1ContainerPort(
                 name=cls.MONGO_NAME,
@@ -142,15 +145,16 @@ class KubernetesResources:
             )],
             resources=client.V1ResourceRequirements(
                 limits={"cpu": cpu_limit, "memory": memory_limit},
-                requests={"cpu": cpu_limit, "memory": memory_limit}
+                requests={"cpu": cpu_request, "memory": memory_request}
             )
         )
 
         # Create stateful set.
         return client.V1beta1StatefulSet(
-            metadata = client.V1ObjectMeta(name=name, namespace=namespace, labels=cls.createDefaultLabels(name)),
+            metadata = client.V1ObjectMeta(name=name, namespace=cluster_object.metadata.namespace,
+                                           labels=cls.createDefaultLabels(name)),
             spec = client.V1beta1StatefulSetSpec(
-                replicas = replicas,
+                replicas = cluster_object.spec.mongodb.replicas,
                 service_name = name,
                 template = client.V1PodTemplateSpec(
                     metadata = client.V1ObjectMeta(labels=cls.createDefaultLabels(name)),
